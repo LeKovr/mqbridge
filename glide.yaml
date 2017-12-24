@@ -1,0 +1,17 @@
+package: .
+import:
+- package: github.com/LeKovr/go-base
+  subpackages:
+  - log
+- package: github.com/LeKovr/mqbridge
+  subpackages:
+  - plugins/file
+  - plugins/nats
+  - plugins/pg
+  - types
+- package: github.com/comail/colog
+- package: github.com/go-pg/pg
+- package: github.com/hpcloud/tail
+- package: github.com/jessevdk/go-flags
+- package: github.com/nats-io/go-nats
+- package: gopkg.in/tomb.v1
