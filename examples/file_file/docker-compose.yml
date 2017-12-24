@@ -1,0 +1,13 @@
+version: '2.1'
+
+services:
+
+  mqbr:
+    image: ${DC_IMAGE}
+    command:
+      --log_level debug
+      --in ${DSN}
+      --out ${DSN}
+      --bridge /data/${BR_IN},/data/${BR_OUT}
+    volumes:
+      - ./:/data
