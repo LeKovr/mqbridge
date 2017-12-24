@@ -6,8 +6,7 @@ SHELL          = /bin/bash
 # Build config
 
 GO            ?= go
-# not supported in BusyBox v1.26.2
-#SOURCES        = manager/*.go api/*.go
+SOURCES        = types/*.go plugins/*/*.go
 LIBS           = $(shell $(GO) list ./... | grep -vE '/(vendor|cmd)/')
 
 OS            ?= linux
@@ -41,7 +40,7 @@ DSN_IN   ?= file://
 DSN_OUT   ?= file://
 
 # Bridge sample
-BRIDGE    ?= src.txt:dest.txt
+BRIDGE    ?= src.txt,dest.txt
 
 # -----------------------------------------------------------------------------
 

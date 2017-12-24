@@ -1,56 +1,28 @@
 package nats
 
 import (
-	"strings"
-
 	"github.com/nats-io/go-nats"
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
 // Listen starts all listening goroutines
-func Listen(side *types.Side, connect string, bridges []string) ([]*types.Bridge, error) {
+func Listen(side *types.Side, connect string, bridges types.Bridges) error {
 
-	nc, err := nats.Connect(connect)
-	if err != nil {
-		return nil, err
-	}
-
-	brs := []*types.Bridge{}
-
-	for i, br := range bridges {
-		pair := strings.SplitN(br, ":", 2)
-		if len(pair) == 1 {
-			pair = append(pair, pair[0])
-		}
-
-		ch := make(chan *nats.Msg, 64)
-		sub, err := nc.ChanSubscribe(pair[0], ch)
-		if err != nil {
-			return nil, err
-		}
-
-		b := types.Bridge{ID: i, Channel: pair[1], Pipe: make(chan string)}
-		side.Log.Printf("Bridge %d: producer connect to channel (%s)", b.ID, pair[0])
-		go reader(side, sub, ch, b)
-		side.WG.Add(1)
-		brs = append(brs, &b)
-	}
-	go disconnect(side, nc)
-	side.WGControl.Add(1)
-	return brs, nil
-}
-
-// Notify starts all notify goroutines
-func Notify(side *types.Side, connect string, bridges []*types.Bridge) error {
-
+	side.Log.Printf("Connect NATS producer: %s", connect)
 	nc, err := nats.Connect(connect)
 	if err != nil {
 		return err
 	}
-	for _, b := range bridges {
-		side.Log.Printf("Bridge %d consumer: connect to func (%s)", b.ID, b.Channel)
-		go writer(side, nc, *b)
+
+	for _, br := range bridges {
+		ch := make(chan *nats.Msg, 64)
+		sub, err := nc.ChanSubscribe(br.In, ch)
+		if err != nil {
+			return err
+		}
+		side.Log.Printf("Bridge %d: producer connect to channel (%s)", br.ID, br.In)
+		go reader(side, sub, ch, br)
 		side.WG.Add(1)
 	}
 	go disconnect(side, nc)
@@ -58,13 +30,33 @@ func Notify(side *types.Side, connect string, bridges []*types.Bridge) error {
 	return nil
 }
 
-func reader(side *types.Side, sub *nats.Subscription, ch chan *nats.Msg, br types.Bridge) {
+// Notify starts all notify goroutines
+func Notify(side *types.Side, connect string, bridges types.Bridges) error {
+
+	side.Log.Printf("Connect NATS consumer: %s", connect)
+	nc, err := nats.Connect(connect)
+	if err != nil {
+		return err
+	}
+	for _, br := range bridges {
+		side.Log.Printf("Bridge %d consumer: connect to channel (%s)", br.ID, br.Out)
+		go writer(side, nc, br)
+		side.WG.Add(1)
+	}
+	go disconnect(side, nc)
+	side.WGControl.Add(1)
+	return nil
+}
+
+func reader(side *types.Side, sub *nats.Subscription, ch chan *nats.Msg, br *types.Bridge) {
 	defer side.WG.Done()
 	defer sub.Unsubscribe()
 	for {
 		select {
 		case line := <-ch:
-			br.Pipe <- string(line.Data[:])
+			str := string(line.Data[:])
+			side.Log.Println("debug: BRIN ", br.ID, " ", str)
+			br.Pipe <- str
 		case <-side.Quit:
 			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
 			return
@@ -72,14 +64,17 @@ func reader(side *types.Side, sub *nats.Subscription, ch chan *nats.Msg, br type
 	}
 }
 
-func writer(side *types.Side, nc *nats.Conn, br types.Bridge) {
+func writer(side *types.Side, nc *nats.Conn, br *types.Bridge) {
 	defer side.WG.Done()
 	for {
 		select {
 		case line := <-br.Pipe:
-			nc.Publish(br.Channel, []byte(line))
-			//	side.Abort <- br.ID
-			//	return
+			err := nc.Publish(br.Out, []byte(line))
+			if err != nil {
+				side.Log.Printf("warn: Bridge %d consumer error: %v", br.ID, err.Error())
+				//	side.Abort <- br.ID
+				//	return
+			}
 		case <-side.Quit:
 			side.Log.Printf("debug: Bridge %d consumer closed", br.ID)
 			return

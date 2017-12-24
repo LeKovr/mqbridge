@@ -1,52 +1,25 @@
 package pg
 
 import (
-	"strings"
-
 	"github.com/go-pg/pg"
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
 // Listen starts all listening goroutines
-func Listen(side *types.Side, connect string, bridges []string) ([]*types.Bridge, error) {
+func Listen(side *types.Side, connect string, bridges types.Bridges) error {
 
-	opts, err := pg.ParseURL(connect)
-	if err != nil {
-		return nil, err
-	}
-	db := pg.Connect(opts)
-
-	brs := []*types.Bridge{}
-
-	for i, br := range bridges {
-		pair := strings.SplitN(br, ":", 2)
-		if len(pair) == 1 {
-			pair = append(pair, pair[0])
-		}
-		ln := db.Listen(pair[0])
-		b := types.Bridge{ID: i, Channel: pair[1], Pipe: make(chan string)}
-		side.Log.Printf("Bridge %d: producer connect to channel (%s)", b.ID, pair[0])
-		go reader(side, ln, b)
-		side.WG.Add(1)
-		brs = append(brs, &b)
-	}
-	go disconnect(side, db)
-	side.WGControl.Add(1)
-	return brs, nil
-}
-
-// Notify starts all notify goroutines
-func Notify(side *types.Side, connect string, bridges []*types.Bridge) error {
-
+	side.Log.Printf("Connect PG producer: %s", connect)
 	opts, err := pg.ParseURL(connect)
 	if err != nil {
 		return err
 	}
 	db := pg.Connect(opts)
-	for _, b := range bridges {
-		side.Log.Printf("Bridge %d consumer: connect to func (%s)", b.ID, b.Channel)
-		go writer(side, db, *b)
+
+	for _, br := range bridges {
+		ln := db.Listen(br.In)
+		side.Log.Printf("Bridge %d: producer connect to channel (%s)", br.ID, br.In)
+		go reader(side, ln, br)
 		side.WG.Add(1)
 	}
 	go disconnect(side, db)
@@ -54,13 +27,34 @@ func Notify(side *types.Side, connect string, bridges []*types.Bridge) error {
 	return nil
 }
 
-func reader(side *types.Side, ln *pg.Listener, br types.Bridge) {
+// Notify starts all notify goroutines
+func Notify(side *types.Side, connect string, bridges types.Bridges) error {
+
+	side.Log.Printf("Connect PG consumer: %s", connect)
+	opts, err := pg.ParseURL(connect)
+	if err != nil {
+		return err
+	}
+	db := pg.Connect(opts)
+	for _, br := range bridges {
+		side.Log.Printf("Bridge %d consumer: connect to func (%s)", br.ID, br.Out)
+		go writer(side, db, br)
+		side.WG.Add(1)
+	}
+	go disconnect(side, db)
+	side.WGControl.Add(1)
+	return nil
+}
+
+func reader(side *types.Side, ln *pg.Listener, br *types.Bridge) {
 	defer side.WG.Done()
 	defer ln.Close()
 	ch := ln.Channel()
 	for {
+		side.Log.Println("debug: BRIN ", br.ID, " START")
 		select {
 		case line := <-ch:
+			side.Log.Println("debug: BRIN ", br.ID, " ", line.Payload)
 			br.Pipe <- line.Payload
 		case <-side.Quit:
 			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
@@ -69,12 +63,12 @@ func reader(side *types.Side, ln *pg.Listener, br types.Bridge) {
 	}
 }
 
-func writer(side *types.Side, db *pg.DB, br types.Bridge) {
+func writer(side *types.Side, db *pg.DB, br *types.Bridge) {
 	defer side.WG.Done()
 	for {
 		select {
 		case line := <-br.Pipe:
-			_, err := db.Exec("SELECT "+br.Channel+"(?)", line)
+			_, err := db.Exec("SELECT "+br.Out+"(?)", line)
 			if err != nil {
 				side.Log.Printf("warn: Bridge %d consumer error: %v", br.ID, err.Error())
 				//	side.Abort <- br.ID

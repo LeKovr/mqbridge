@@ -35,7 +35,7 @@
 ```
       --in=        Producer connect string
       --out=       Consumer connect string
-      --bridge=    Bridge(s) in form 'in_channel[:out_channel]'
+      --bridge=    Bridge(s) in form 'in_channel[,out_channel]'
 ```
 
 ### Connect strings
@@ -48,6 +48,8 @@
 
 ### Producers
 
+See also: [Examples directory](examples/)
+
 mqbridge uses the following as data source:
 
 * **file** - tail files named as `in_channel`
@@ -56,7 +58,7 @@ mqbridge uses the following as data source:
 
 ### Consumers
 
-mqbridge sends received messages
+mqbridge sends received messages as
 
 * **file** - add lines to files named as `out_channel`
 * **pg** - calls sql `select out_channel(data)`
@@ -77,7 +79,7 @@ $_$;
 ```
 2. Run mqbridge
 ```
-./mqbridge --bridge event:bridge \
+./mqbridge --bridge event,bridge \
   --in postgres://op:op@localhost:5432/db0?sslmode=disable \
  --out postgres://op:op@localhost:5432/db1?sslmode=disable
 ```
@@ -97,7 +99,7 @@ select * from mqbridge_data ;
 ## TODO
 
 * [ ] centrifugo support
-* [ ] add channel buffer length in bridge config args (in:out:len)
+* [ ] add channel buffer length in bridge config args (--buffer []int)
 * [ ] (may be) postgresql: reuse connect if in=out
 * [ ] (may be) use github.com/jaehue/anyq for mq bridge
 

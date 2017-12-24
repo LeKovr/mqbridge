@@ -5,62 +5,53 @@ import (
 	"github.com/hpcloud/tail"
 	"gopkg.in/tomb.v1" // need tomb.ErrStillAlive
 	"os"
-	"strings"
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
 // Listen starts all listening goroutines
-func Listen(side *types.Side, connect string, bridges []string) ([]*types.Bridge, error) {
-
-	brs := []*types.Bridge{}
-
-	for i, br := range bridges {
-		pair := strings.SplitN(br, ":", 2)
-		if len(pair) == 1 {
-			pair = append(pair, pair[0])
-		}
-		config := tail.Config{
-			Follow: true,
-			ReOpen: true,
-			Logger: side.Log,
-		}
-		t, err := tail.TailFile(pair[0], config)
-		if err != nil {
-			return brs, err
-		}
-		b := types.Bridge{ID: i, Channel: pair[1], Pipe: make(chan string)}
-		side.Log.Printf("Bridge %d: producer connect to file %s", b.ID, pair[0])
-		go reader(side, t, b)
-		side.WG.Add(1)
-		brs = append(brs, &b)
+func Listen(side *types.Side, connect string, bridges types.Bridges) error {
+	config := tail.Config{
+		Follow: true,
+		ReOpen: true,
+		Logger: side.Log,
 	}
-	return brs, nil
+
+	for _, br := range bridges {
+		t, err := tail.TailFile(br.In, config)
+		if err != nil {
+			return err
+		}
+		side.Log.Printf("Bridge %d: producer connect to file %s", br.ID, br.In)
+		go reader(side, t, br)
+		side.WG.Add(1)
+	}
+	return nil
 }
 
 // Notify starts all notify goroutines
-func Notify(side *types.Side, connect string, bridges []*types.Bridge) error {
+func Notify(side *types.Side, connect string, bridges types.Bridges) error {
 
-	for _, b := range bridges {
-		if b.Channel == "-" {
+	for _, br := range bridges {
+		if br.Out == "-" {
 			// send to STDOUT
-			side.Log.Printf("Bridge %d consumer: connect to stdout", b.ID)
-			go printer(side, *b)
+			side.Log.Printf("Bridge %d consumer: connect to stdout", br.ID)
+			go printer(side, *br)
 			side.WG.Add(1)
 		} else {
-			f, err := os.Create(b.Channel)
+			f, err := os.Create(br.Out)
 			if err != nil {
 				return err
 			}
-			side.Log.Printf("Bridge %d consumer: connect to file %s", b.ID, b.Channel)
-			go writer(side, f, *b)
+			side.Log.Printf("Bridge %d consumer: connect to file %s", br.ID, br.Out)
+			go writer(side, f, br)
 			side.WG.Add(1)
 		}
 	}
 	return nil
 }
 
-func reader(side *types.Side, tf *tail.Tail, br types.Bridge) {
+func reader(side *types.Side, tf *tail.Tail, br *types.Bridge) {
 	defer side.WG.Done()
 	for {
 		select {
@@ -71,6 +62,7 @@ func reader(side *types.Side, tf *tail.Tail, br types.Bridge) {
 				side.Abort <- br.ID
 				return
 			}
+			side.Log.Println("debug: BRIN ", br.ID, " ", line.Text)
 			br.Pipe <- line.Text
 		case <-side.Quit:
 			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
@@ -80,7 +72,7 @@ func reader(side *types.Side, tf *tail.Tail, br types.Bridge) {
 	}
 }
 
-func writer(side *types.Side, f *os.File, br types.Bridge) {
+func writer(side *types.Side, f *os.File, br *types.Bridge) {
 	defer side.WG.Done()
 	for {
 		select {

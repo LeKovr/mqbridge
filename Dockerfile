@@ -23,8 +23,6 @@ RUN make build-standalone
 
 FROM scratch
 
-VOLUME /data
-
 WORKDIR /
 COPY --from=0 /go/src/github.com/LeKovr/mqbridge/mqbridge .
 

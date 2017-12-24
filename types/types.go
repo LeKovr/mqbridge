@@ -22,17 +22,19 @@ type Side struct {
 type Bridge struct {
 	// Bridge ID
 	ID int
-
-	// Source / dest channel name
-	Channel string
-
-	// Dest / source channel
+	// In channel name
+	In string
+	// Out channel name
+	Out string
+	// Bridge channel
 	Pipe chan string //[]byte
-
 }
 
+// Bridges holds slice of Bridge refs
+type Bridges []*Bridge
+
 // ListenFunc holds signature for Listen func which starts all listening goroutines
-type ListenFunc func(side *Side, connect string, pairs []string) ([]*Bridge, error)
+type ListenFunc func(side *Side, connect string, bridges Bridges) error
 
 // NotifyFunc holds signature for Notify func which starts all notify goroutines
-type NotifyFunc func(side *Side, connect string, bridges []*Bridge) error
+type NotifyFunc func(side *Side, connect string, bridges Bridges) error

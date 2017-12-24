@@ -23,6 +23,8 @@ import (
 
 // Flags defines local application flags
 type Flags struct {
+	BridgeDelimiter string `long:"delim"  default:","       description:"Bridge definition delimiter"`
+
 	In      string   `long:"in"          description:"Producer connect string"`
 	Out     string   `long:"out"         description:"Consumer connect string"`
 	Bridges []string `long:"bridge"      description:"Bridge in form 'in_channel[:out_channel]'"`
@@ -64,7 +66,8 @@ func main() {
 
 	// End of plugins code block
 
-	bridges, err := funcsIn[typeIn](sideIn, connectIn, cfg.Bridges)
+	bridges := parseBridges(cfg)
+	err = funcsIn[typeIn](sideIn, connectIn, bridges)
 	panicIfError(lg, err, "Producer init")
 
 	err = funcsOut[typeOut](sideOut, connectOut, bridges)
@@ -120,11 +123,29 @@ func parseDSN(dsn string) (typ, connect string, err error) {
 		connect = dsn
 	} else if strings.HasPrefix(dsn, "file://") {
 		typ = "file"
-		connect = strings.TrimPrefix(dsn, "file://")
+		// connect does not used
 	} else {
 		err = errors.New("Unsupported connect string: " + dsn)
 	}
 	return
+}
+
+func parseBridges(cfg *Config) types.Bridges {
+	brs := []*types.Bridge{}
+	for i, br := range cfg.Bridges {
+		def := strings.Split(br, cfg.BridgeDelimiter)
+		if len(def) == 1 {
+			def = append(def, def[0])
+		}
+		b := types.Bridge{
+			ID:   i,
+			In:   def[0],
+			Out:  def[1],
+			Pipe: make(chan string),
+		}
+		brs = append(brs, &b)
+	}
+	return brs
 }
 
 // -----------------------------------------------------------------------------
