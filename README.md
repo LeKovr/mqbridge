@@ -38,7 +38,7 @@ notify event, '{"test": 4}';
 
 ## TODO
 
-[ ] centrifugo support
-[ ] (may be) postgresql: reuse connect if in=out
-[ ] (may be) use github.com/jaehue/anyq for mq bridge
+* [ ] centrifugo support
+* [ ] (may be) postgresql: reuse connect if in=out
+* [ ] (may be) use github.com/jaehue/anyq for mq bridge
 
