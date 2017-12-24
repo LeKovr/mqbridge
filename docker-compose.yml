@@ -1,0 +1,12 @@
+version: '2.1'
+
+services:
+
+  mqbridge:
+    image: ${DC_IMAGE}
+    command:
+      --log_level debug --in ${DSN_IN} --out ${DSN_OUT} --bridge ${BRIDGE}
+    external_links:
+      - dcape_db_1:db
+    build:
+      context: .
