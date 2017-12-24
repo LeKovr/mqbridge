@@ -26,7 +26,7 @@ func Listen(side *types.Side, connect string, bridges []string) ([]*types.Bridge
 		}
 		ln := db.Listen(pair[0])
 		b := types.Bridge{ID: i, Channel: pair[1], Pipe: make(chan string)}
-		side.Log.Printf("Bridge %d: side 'in' connect to channel (%s)", b.ID, pair[0])
+		side.Log.Printf("Bridge %d: producer connect to channel (%s)", b.ID, pair[0])
 		go reader(side, ln, b)
 		side.WG.Add(1)
 		brs = append(brs, &b)
@@ -45,7 +45,7 @@ func Notify(side *types.Side, connect string, bridges []*types.Bridge) error {
 	}
 	db := pg.Connect(opts)
 	for _, b := range bridges {
-		side.Log.Printf("Bridge %d side 'out': connect to func (%s)", b.ID, b.Channel)
+		side.Log.Printf("Bridge %d consumer: connect to func (%s)", b.ID, b.Channel)
 		go writer(side, db, *b)
 		side.WG.Add(1)
 	}
@@ -63,7 +63,7 @@ func reader(side *types.Side, ln *pg.Listener, br types.Bridge) {
 		case line := <-ch:
 			br.Pipe <- line.Payload
 		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d side 'in' closed", br.ID)
+			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
 			return
 		}
 	}
@@ -76,12 +76,12 @@ func writer(side *types.Side, db *pg.DB, br types.Bridge) {
 		case line := <-br.Pipe:
 			_, err := db.Exec("SELECT "+br.Channel+"(?)", line)
 			if err != nil {
-				side.Log.Printf("warn: Bridge %d side 'out' error: %v", br.ID, err.Error())
+				side.Log.Printf("warn: Bridge %d consumer error: %v", br.ID, err.Error())
 				//	side.Abort <- br.ID
 				//	return
 			}
 		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d side 'out' closed", br.ID)
+			side.Log.Printf("debug: Bridge %d consumer closed", br.ID)
 			return
 		}
 	}

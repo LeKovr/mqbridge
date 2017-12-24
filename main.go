@@ -23,8 +23,8 @@ import (
 
 // Flags defines local application flags
 type Flags struct {
-	In      string   `long:"in"          description:"Side 'in' connect string"`
-	Out     string   `long:"out"         description:"Side 'out' connect string"`
+	In      string   `long:"in"          description:"Producer connect string"`
+	Out     string   `long:"out"         description:"Consumer connect string"`
 	Bridges []string `long:"bridge"      description:"Bridge in form 'in_channel[:out_channel]'"`
 	Version bool     `long:"version"     description:"Show version and exit"`
 }
@@ -46,10 +46,10 @@ func main() {
 	sideOut := newSide(lg, wg)
 
 	typeIn, connectIn, err := parseDSN(cfg.In)
-	panicIfError(lg, err, "Source")
+	panicIfError(lg, err, "Producer")
 
 	typeOut, connectOut, err := parseDSN(cfg.Out)
-	panicIfError(lg, err, "Destination")
+	panicIfError(lg, err, "Consumer")
 
 	// This code may be rewritten for golang plugins
 
@@ -65,12 +65,12 @@ func main() {
 	// End of plugins code block
 
 	bridges, err := funcsIn[typeIn](sideIn, connectIn, cfg.Bridges)
-	panicIfError(lg, err, "Source init")
+	panicIfError(lg, err, "Producer init")
 
 	err = funcsOut[typeOut](sideOut, connectOut, bridges)
-	panicIfError(lg, err, "Destination init")
+	panicIfError(lg, err, "Consumer init")
 
-	lg.Println("Service Ready")
+	lg.Println("info: Service Ready")
 
 	// Wait for interrupt signal to gracefully shutdown the server with
 	quit := make(chan os.Signal)
@@ -81,31 +81,31 @@ func main() {
 		lg.Println("Interrupted")
 		break
 	case id := <-sideIn.Abort:
-		lg.Printf("Bridge %d side 'in' aborted", id)
+		lg.Printf("Bridge %d producer aborted", id)
 		break
 	case id := <-sideOut.Abort:
-		lg.Printf("Bridge %d side 'out' aborted", id)
+		lg.Printf("Bridge %d consumer aborted", id)
 		break
 	}
-	lg.Println("Exiting...")
+	lg.Println("info: Exiting...")
 
-	close(sideIn.Quit) //Shutdown producers
-	sideIn.WG.Wait()   //Wait for producers
+	close(sideIn.Quit)
+	sideIn.WG.Wait()
 
-	close(sideOut.Quit) //Close messages without causing a panic
-	sideOut.WG.Wait()   //Wait for consumers to finish processing messages and exit
+	close(sideOut.Quit)
+	sideOut.WG.Wait()
 
-	wg.Wait() // Wait for sides shutdown
+	wg.Wait() // Wait for side controls shutdown
 
-	lg.Println("Server exit")
+	lg.Println("info: Server exit")
 }
 
 func newSide(lg log.Logger, wg *sync.WaitGroup) *types.Side {
 	return &types.Side{
-		Abort:     make(chan int),
 		Log:       lg,
 		WGControl: wg,
 		WG:        &sync.WaitGroup{},
+		Abort:     make(chan int),
 		Quit:      make(chan struct{}),
 	}
 
@@ -167,6 +167,6 @@ func panicIfError(lg log.Logger, err error, msg string) {
 // -----------------------------------------------------------------------------
 
 func panicf(lg log.Logger, format string, v ...interface{}) {
-	lg.Printf("error: Error: "+format, v...)
+	lg.Printf("error: "+format, v...)
 	os.Exit(1)
 }
