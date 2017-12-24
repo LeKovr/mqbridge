@@ -124,7 +124,7 @@ buildall: lint vet
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
 	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
-	      "-X main.Build=$(STAMP) -X main.Commit=$$GH" ./cmd/$(PRG) ; \
+	      "-X main.Build=$(STAMP) -X main.Commit=$$GH" . ; \
 	  done
 
 ## create disro files
