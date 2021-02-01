@@ -1,7 +1,7 @@
 dist
 vendor
 mqbridge
-mqbridge_*
+!cmd/mqbridge
 .plugins
 *.so
 coverage.out
