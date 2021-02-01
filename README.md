@@ -1,19 +1,36 @@
 # mqbridge
 > Translate messages from one message queue system to another one
 
-[![GoCard][gc1]][gc2]
+[![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
- [![GitHub code size in bytes][sz]]()
+ [![Build Status][bs1]][bs2]
+ [![FOSSA Status][fs1]][fs2]
  [![GitHub license][gl1]][gl2]
 
+[![codecov][cc1]][cc2]
+ [![Test Coverage][cct1]][cct2]
+ [![Maintainability][ccm1]][ccm2]
+ [![GoCard][gc1]][gc2]
 
-[gc1]: https://goreportcard.com/badge/LeKovr/mqbridge
+[cct1]: https://api.codeclimate.com/v1/badges/0f7f2d4314b28b45e333/test_coverage
+[cct2]: https://codeclimate.com/github/LeKovr/mqbridge/test_coverage
+[ccm1]: https://api.codeclimate.com/v1/badges/0f7f2d4314b28b45e333/maintainability
+[ccm2]: https://codeclimate.com/github/LeKovr/mqbridge/maintainability
+[fs1]: https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge.svg?type=shield
+[fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge?ref=badge_shield
+[ref1]: https://pkg.go.dev/badge/github.com/LeKovr/mqbridge.svg
+[ref2]: https://pkg.go.dev/github.com/LeKovr/mqbridge
+[cc1]: https://codecov.io/gh/LeKovr/mqbridge/branch/master/graph/badge.svg
+[cc2]: https://codecov.io/gh/LeKovr/mqbridge
+[gc1]: https://goreportcard.com/badge/github.com/LeKovr/mqbridge
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/mqbridge
+[bs1]: https://cloud.drone.io/api/badges/LeKovr/mqbridge/status.svg
+[bs2]: https://cloud.drone.io/LeKovr/mqbridge
 [gr1]: https://img.shields.io/github/release/LeKovr/mqbridge.svg
 [gr2]: https://github.com/LeKovr/mqbridge/releases
-[sz]: https://img.shields.io/github/languages/code-size/LeKovr/mqbridge.svg
 [gl1]: https://img.shields.io/github/license/LeKovr/mqbridge.svg
-[gl2]: LICENSE
+[gl2]: https://github.com/LeKovr/mqbridge/blob/master/LICENSE
+
 
 ![Data flow](mqbridge.png)
 
@@ -28,7 +45,7 @@
 ## Installation
 
 * Linux: just download & run. See [Latest release](https://github.com/LeKovr/mqbridge/releases/latest)
-* Docker: `docker pull lekovr/mqbridge`. See [Docker store](https://store.docker.com/community/images/lekovr/mqbridge)
+* Docker: `docker pull ghcr.io/lekovr/mqbridge`
 
 ## Config
 
@@ -107,4 +124,4 @@ select * from mqbridge_data ;
 
 The MIT License (MIT), see [LICENSE](LICENSE).
 
-Copyright (c) 2017 Alexey Kovrizhkin <lekovr+mqbridge@gmail.com>
+Copyright (c) 2017-2021 Aleksey Kovrizhkin <lekovr+mqbridge@gmail.com>
