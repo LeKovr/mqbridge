@@ -50,7 +50,7 @@ var (
 	ErrNoEndPoint    = errors.New("no endpoint")
 
 	ErrPluginBadNew  = errors.New("plugin has no correct New signature")
-	ErrPluginUnknown = errors.New("plugin is unknown")
+	ErrPluginUnknown = errors.New("plugin type is unknown")
 )
 
 const (
@@ -81,14 +81,24 @@ func New(log logr.Logger, cfg *Config) (*Service, error) {
 		}
 		service.EndPoints[tag] = ep
 	}
+	var err error
 	for i, bridge := range cfg.Bridges {
-		br, err := NewBridge(cfg.BridgeDelimiter, bridge)
+		var br *Bridge
+		br, err = NewBridge(cfg.BridgeDelimiter, bridge)
 		if err != nil {
-			return nil, err
+			break
+		}
+		if _, ok := service.EndPoints[br.InTag]; !ok {
+			err = ErrNoEndPoint
+			break
+		}
+		if _, ok := service.EndPoints[br.OutTag]; !ok {
+			err = ErrNoEndPoint
+			break
 		}
 		service.Bridges[i] = br
 	}
-	return service, nil
+	return service, err
 }
 
 // Run runs bridges
@@ -98,23 +108,14 @@ func (srv *Service) Run(quit chan os.Signal) (err error) {
 		srv.wg.Wait() // Wait for side controls shutdown
 		srv.log.Info("Service Exit")
 	}()
-	for _, br := range srv.Bridges {
-		in, ok := srv.EndPoints[br.InTag]
-		if !ok {
-			err = ErrNoEndPoint
-			break
-		}
-		out, ok := srv.EndPoints[br.OutTag]
-		if !ok {
-			err = ErrNoEndPoint
-			break
-		}
-		srv.log.Info("Bridge", "in", in, "out", out)
-		err = in.Listen(br.InChannel, br.Pipe)
+	for i, br := range srv.Bridges {
+		in := srv.EndPoints[br.InTag]
+		out := srv.EndPoints[br.OutTag]
+		err = in.Listen(i, br.InChannel, br.Pipe)
 		if err != nil {
 			break
 		}
-		err = out.Notify(br.OutChannel, br.Pipe)
+		err = out.Notify(i, br.OutChannel, br.Pipe)
 		if err != nil {
 			break
 		}

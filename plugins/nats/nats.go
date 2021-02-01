@@ -38,8 +38,8 @@ func NewConnected(epa types.EndPointAttr, nc Server) (types.EndPoint, error) {
 }
 
 // Listen starts all listening goroutines
-func (ep EndPoint) Listen(channel string, pipe chan string) error {
-	log := ep.Log.WithValues("is_in", true, "channel", channel)
+func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
+	log := ep.Log.WithValues("is_in", true, "channel", channel, "id", id)
 	log.Info("Connect NATS producer")
 	ch := make(chan *nats.Msg)
 	sub, err := ep.nc.ChanSubscribe(channel, ch)
@@ -52,8 +52,8 @@ func (ep EndPoint) Listen(channel string, pipe chan string) error {
 }
 
 // Notify starts all notify goroutines
-func (ep EndPoint) Notify(channel string, pipe chan string) error {
-	log := ep.Log.WithValues("is_in", false, "channel", channel)
+func (ep EndPoint) Notify(id int, channel string, pipe chan string) error {
+	log := ep.Log.WithValues("is_in", false, "channel", channel, "id", id)
 	log.Info("Connect NATS producer")
 	go ep.writer(log, channel, pipe)
 	return nil

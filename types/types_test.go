@@ -1,24 +1,19 @@
 package types_test
 
-// This code does not used for testing (there is nothing to test here)
-// It is intended for changing "[no test files]" to "coverage: [no statements]"
-
 import (
-	"testing"
-
-	"github.com/stretchr/testify/assert"
+	"time"
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
-type EndPoint struct{}
-
-func New() (EndPoint, error)                                      { return EndPoint{}, nil }
-func (ep EndPoint) Listen(channel string, pipe chan string) error { return nil }
-func (ep EndPoint) Notify(channel string, pipe chan string) error { return nil }
-
-func TestRun(t *testing.T) {
-	plug, _ := New()
-	_, ok := interface{}(plug).(types.EndPoint)
-	assert.True(t, ok)
+func Example_printer() {
+	epa := types.NewBlankEndPointAttr()
+	pipe := make(chan string)
+	go epa.Printer(epa.Log, pipe)
+	pipe <- "test row"
+	time.Sleep(100 * time.Millisecond)
+	close(epa.Quit)
+	epa.WG.Wait()
+	// Output:
+	// test row
 }

@@ -1,7 +1,6 @@
 package file
 
 import (
-	"fmt"
 	"os"
 
 	"github.com/go-logr/logr"
@@ -23,8 +22,8 @@ func New(epa types.EndPointAttr, dsn string) (types.EndPoint, error) {
 }
 
 // Listen starts all listening goroutines
-func (ep EndPoint) Listen(channel string, pipe chan string) error {
-	log := ep.Log.WithValues("is_in", true, "channel", channel)
+func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
+	log := ep.Log.WithValues("is_in", true, "channel", channel, "id", id)
 	config := tail.Config{
 		Follow:    true,
 		ReOpen:    true,
@@ -40,12 +39,12 @@ func (ep EndPoint) Listen(channel string, pipe chan string) error {
 }
 
 // Notify starts all notify goroutines
-func (ep EndPoint) Notify(channel string, pipe chan string) error {
-	log := ep.Log.WithValues("is_in", false, "channel", channel)
+func (ep EndPoint) Notify(id int, channel string, pipe chan string) error {
+	log := ep.Log.WithValues("is_in", false, "channel", channel, "id", id)
 	if channel == "-" {
 		// send to STDOUT
 		log.Info("Endpoint for stdout")
-		go ep.printer(log, pipe)
+		go ep.Printer(log, pipe)
 	} else {
 		f, err := os.Create(channel)
 		if err != nil {
@@ -96,21 +95,6 @@ func (ep EndPoint) writer(log logr.Logger, f *os.File, pipe chan string) {
 		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			f.Close()
-			return
-		}
-	}
-}
-
-func (ep EndPoint) printer(log logr.Logger, pipe chan string) {
-	ep.WG.Add(1)
-	defer ep.WG.Done()
-	for {
-		select {
-		case line := <-pipe:
-			fmt.Println(line)
-			// check err
-		case <-ep.Quit:
-			log.V(1).Info("Endpoint close")
 			return
 		}
 	}

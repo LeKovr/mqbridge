@@ -1,35 +1,23 @@
 package file_test
 
 import (
-	"sync"
 	"testing"
 	"time"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/wojas/genericr"
 
 	plugin "github.com/LeKovr/mqbridge/plugins/file"
 	"github.com/LeKovr/mqbridge/types"
 )
 
-func newEPA() types.EndPointAttr {
-	var wg sync.WaitGroup
-	return types.EndPointAttr{
-		Log:   genericr.New(func(e genericr.Entry) {}),
-		WG:    &wg,
-		Abort: make(chan string),
-		Quit:  make(chan struct{}),
-	}
-}
-
 func TestAll(t *testing.T) {
-	epa := newEPA()
+	epa := types.NewBlankEndPointAttr()
 	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 	pipe := make(chan string)
-	err = plug.Listen("file.go", pipe)
+	err = plug.Listen(0, "file.go", pipe)
 	assert.NoError(t, err)
-	err = plug.Notify("-", pipe)
+	err = plug.Notify(0, "-", pipe)
 	assert.NoError(t, err)
 	time.Sleep(100 * time.Millisecond)
 	close(epa.Quit)
@@ -50,17 +38,17 @@ func Example_plugin() {
 }
 */
 func TestErrors(t *testing.T) {
-	epa := newEPA()
+	epa := types.NewBlankEndPointAttr()
 	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 
 	pipe := make(chan string)
 
-	err = plug.Listen("...", pipe)
+	err = plug.Listen(0, "...", pipe)
 	assert.NotNil(t, err)
 	assert.Equal(t, "open ...: no such file or directory", err.Error())
 
-	err = plug.Notify("testdata/", pipe)
+	err = plug.Notify(0, "testdata/", pipe)
 	assert.NotNil(t, err)
 	assert.Equal(t, "open testdata/: is a directory", err.Error())
 }

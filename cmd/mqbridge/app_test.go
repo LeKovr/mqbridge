@@ -20,7 +20,7 @@ func TestRunErrors(t *testing.T) {
 	}{
 		{"Help", 3, []string{"-h"}},
 		{"UnknownFlag", 2, []string{"-0"}},
-		{"UnknownRoot", 1, []string{"--debug", "--point", ""}},
+		{"IncorrectEndPoint", 1, []string{"--debug", "--point", "xx:unknown"}},
 	}
 	for _, tt := range tests {
 		os.Args = append([]string{a[0]}, tt.args...)

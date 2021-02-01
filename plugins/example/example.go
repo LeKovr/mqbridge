@@ -23,8 +23,8 @@ func New(epa types.EndPointAttr, dsn string) (types.EndPoint, error) {
 }
 
 // Listen starts all listening goroutines
-func (ep EndPoint) Listen(channel string, pipe chan string) error {
-	log := ep.Log.WithValues("is_in", true, "channel", channel)
+func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
+	log := ep.Log.WithValues("is_in", true, "channel", channel, "id", id)
 	parts := strings.SplitN(channel, ":", 2)
 	count, err := strconv.Atoi(parts[0])
 	if err != nil {
@@ -40,10 +40,10 @@ func (ep EndPoint) Listen(channel string, pipe chan string) error {
 }
 
 // Notify starts all notify goroutines
-func (ep EndPoint) Notify(channel string, pipe chan string) error {
-	log := ep.Log.WithValues("is_in", false, "channel", channel)
+func (ep EndPoint) Notify(id int, channel string, pipe chan string) error {
+	log := ep.Log.WithValues("is_in", false, "channel", channel, "id", id)
 	log.Info("Endpoint for STDOUT")
-	go ep.printer(log, pipe)
+	go ep.Printer(log, pipe)
 	return nil
 }
 
@@ -63,20 +63,6 @@ func (ep EndPoint) reader(log logr.Logger, count, delay int, pipe chan string) {
 			if i >= count {
 				ep.Abort <- "channel"
 			}
-		case <-ep.Quit:
-			log.V(1).Info("Endpoint close")
-			return
-		}
-	}
-}
-
-func (ep EndPoint) printer(log logr.Logger, pipe chan string) {
-	ep.WG.Add(1)
-	defer ep.WG.Done()
-	for {
-		select {
-		case line := <-pipe:
-			fmt.Println(line)
 		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			return
