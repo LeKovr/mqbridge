@@ -2,6 +2,7 @@
 > Translate messages from one message queue system to another one
 
 [![GoCard][gc1]][gc2]
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge.svg?type=shield)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge?ref=badge_shield)
  [![GitHub Release][gr1]][gr2]
  [![GitHub code size in bytes][sz]]()
  [![GitHub license][gl1]][gl2]
@@ -16,6 +17,9 @@
 [gl2]: LICENSE
 
 ![Data flow](mqbridge.png)
+
+
+[![FOSSA Status](https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge.svg?type=large)](https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge?ref=badge_large)
 
 ## Message queue systems supported
 
