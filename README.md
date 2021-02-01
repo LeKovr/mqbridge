@@ -1,4 +1,5 @@
 # mqbridge
+
 > Translate messages from one message queue system to another one
 
 [![Go Reference][ref1]][ref2]
@@ -31,7 +32,6 @@
 [gl1]: https://img.shields.io/github/license/LeKovr/mqbridge.svg
 [gl2]: https://github.com/LeKovr/mqbridge/blob/master/LICENSE
 
-
 ![Data flow](mqbridge.png)
 
 ## Message queue systems supported
@@ -47,19 +47,38 @@
 * Linux: just download & run. See [Latest release](https://github.com/LeKovr/mqbridge/releases/latest)
 * Docker: `docker pull ghcr.io/lekovr/mqbridge`
 
+## Plugins
+
+**mqbridge** has 2 build modes - standalone (default) and **plugin** mode.
+
+To activate **plugin** mode, run
+
+```sh
+make plugin-on
+```
+
+You will see `Loading plugin` in program output (using `make run`).
+
+To deactivate **plugin** mode, run
+
+```sh
+make clean plugin-off
+```
+
 ## Config
 
-```
-      --in=        Producer connect string
-      --out=       Consumer connect string
-      --bridge=    Bridge(s) in form 'in_channel[,out_channel]'
+```sh
+  --point=       Endpoints connect string in form 'tag[:plugin[://dsn]]' (default: io:file)
+  --bridge=      Bridge in form 'in_tag:in_channel:out_tag[:out_channel]' (default: io:src.txt,io:dst.txt)
 ```
 
 ### Connect strings
 
-* **file** - `file://`
-* **pg** - `postgres://user:pass@host:port/db?sslmode=disable`
-* **nats** - `nats://user:pass@host:port`
+* **file** - `${TAG):file://`
+* **pg** - `${TAG}:postgres://user:pass@host:port/db?sslmode=disable`
+* **nats** - `${TAG}:nats://user:pass@host:port`
+
+Where `${TAG}` is the name of endpoint used in bridge definitions
 
 ## Usage
 
@@ -86,6 +105,7 @@ mqbridge sends received messages as
 This sample shows how to setup pg -> pg bridge.
 
 1. Setup pg consumer (db1) for `out_channel` = `bridge` (see function name)
+
 ```sql
 create table mqbridge_data (line jsonb);
 
@@ -94,28 +114,33 @@ $_$
   begin insert into mqbridge_data (line) values(a); end 
 $_$;
 ```
+
 2. Run mqbridge
+
+```sh
+./mqbridge --bridge in:event,out:bridge \
+  --point in:pg:postgres://op:op@localhost:5432/db0?sslmode=disable \
+  --point out:pg:postgres://op:op@localhost:5432/db1?sslmode=disable
 ```
-./mqbridge --bridge event,bridge \
-  --in postgres://op:op@localhost:5432/db0?sslmode=disable \
- --out postgres://op:op@localhost:5432/db1?sslmode=disable
-```
+
 3. Run at pg producer (db0) SQL
+
 ```sql
 notify event, '{"test": 1972}';
 ```
+
 4. See results in db1
+
 ```
 select * from mqbridge_data ;
       line     
 ----------------
  {"test": 1972}
-
 ```
 
 ## TODO
 
-* [ ] (if usecase will be) add channel buffer length in bridge config args (--buffer []int)
+* [ ] (if there will be usecase) add channel buffer length in bridge config args (--buffer []int)
 * [ ] (may be) centrifugo support
 * [ ] (may be) postgresql: reuse connect if in=out
 * [ ] (may be) use github.com/jaehue/anyq for mq bridge

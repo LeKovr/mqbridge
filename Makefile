@@ -12,7 +12,15 @@ SOURCES      = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go'  -printf '%p\
 SRCU = $(wildcard *.go) $(wildcard */*.go) $(wildcard */*/*.go)
 PLUGIN_DIRS  = $(shell go list -f '{{.Dir}}' ./plugins/...)
 PLUGIN_NAMES = $(notdir $(PLUGIN_DIRS))
-PLUGINS      = $(PLUGIN_NAMES:%=%.so)
+
+USE_PLUGINS  = $(shell test -f .plugins && echo yes)
+ifeq ($(USE_PLUGINS),yes)
+  PLUGINS      = $(PLUGIN_NAMES:%=%.so)
+  BUILD_ARG    = -tags plugin
+  TEST_ARG     = ,plugin
+else
+  PLUGINS      =
+endif
 
 BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 APP_VERSION   ?= $(shell git describe --tags --always)
@@ -73,8 +81,8 @@ vet:
 ## Run tests
 test: coverage.out
 
-coverage.out: $(SOURCES)
-	$(GO) test -tags test -covermode=atomic -coverprofile=$@ ./...
+coverage.out: $(SOURCES) $(PLUGINS)
+	$(GO) test -tags test$(TEST_ARG) -covermode=atomic -coverprofile=$@ ./...
 
 ## Show package coverage in html (make cov-html PKG=counter)
 cov-html: coverage.out
@@ -84,33 +92,43 @@ cov-html: coverage.out
 build: $(PRG)
 
 ## Build webtail command
-$(PRG): $(SOURCES)
-	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -ldflags \
+$(PRG): $(SOURCES) $(PLUGINS)
+	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ $(BUILD_ARG) -ldflags \
 	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$@
 
-plugin-off:
-	[ ! -f .plugins ] || exit 0
-	for n in $(PLUGIN_NAMES) ; do \
-	  sed -i "s/package main/package $$n/" \
-	    plugins/$$n/$$n.go plugins/$$n/*_test.go ; \
-	done
-	rm .plugins
+## build and run in foreground
+run: build
+	./$(PRG) --debug
 
+# ------------------------------------------------------------------------------
+## Plugin support
+#:
+
+## Enable plugin mode
 plugin-on:
-	[ -f .plugins ] || exit 0
-	for n in $(PLUGIN_NAMES) ; do \
-	  sed -i "s/package $$n/package main/" \ 
-	  plugins/$$n/$$n.go plugins/$$n/*_test.go ; \
+	@echo -n "Enable plugin mode.."
+ifneq ($(USE_PLUGINS),yes)
+	@for n in $(PLUGIN_NAMES) ; do \
+	  sed -i "s/package $$n/package main/" plugins/$$n/$$n.go plugins/$$n/*_test.go ; \
 	done
-	touch .plugins
+	@touch .plugins
+	@echo "done."
+else
+	@echo "done already"
+endif
 
-## Build app
-plugin-build: $(PLUGINS)
-	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ -tags plugin -ldflags \
-	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$@
-
-plugin-test: $(SOURCES) $(PLUGINS)
-	$(GO) test -tags test,plugin -covermode=atomic -coverprofile=coverage.out ./...
+## Disable plugin mode
+plugin-off:
+	@echo -n "Disable plugin mode.."
+ifeq ($(USE_PLUGINS),yes)
+	@for n in $(PLUGIN_NAMES) ; do \
+	  sed -i "s/package main/package $$n/" plugins/$$n/$$n.go plugins/$$n/*_test.go ; \
+	done
+	@rm .plugins
+	@echo "done."
+else
+	@echo "done already"
+endif
 
 example.so: plugins/example/*.go
 	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -buildmode=plugin -o $@ $<
@@ -124,16 +142,6 @@ nats.so: plugins/nats/*.go
 pg.so: plugins/pg/*.go
 	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -buildmode=plugin -o $@ $<
 
-
-## Build like docker image from scratch
-build-standalone: lint vet test
-	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
-	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG)
-
-## build and run in foreground
-run: build
-	./$(PRG) --debug
-
 doc:
 	@echo "Open http://localhost:6060/pkg/LeKovr/webtail"
 	@godoc -http=:6060
@@ -141,6 +149,13 @@ doc:
 # ------------------------------------------------------------------------------
 ## Prepare distros
 #:
+
+
+## Build like docker image from scratch
+build-standalone: lint vet test
+	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
+	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG)
+
 
 ## build app for all platforms
 buildall: lint vet
@@ -175,6 +190,7 @@ clean:
 	@[ -d $(DIRDIST) ] && rm -rf $(DIRDIST) || true
 	@[ -f $(PRG) ] && rm -f $(PRG) || true
 	@[ ! -f coverage.out ] || rm coverage.out
+	@for f in $(PLUGINS) ; do [ ! -f $$f ] || rm $$f ; done
 
 # ------------------------------------------------------------------------------
 ## Docker operations

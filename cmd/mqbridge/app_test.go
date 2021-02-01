@@ -39,7 +39,7 @@ func TestRun(t *testing.T) {
 	// Save original args
 	a := os.Args
 	os.Args = append([]string{a[0]}, "--debug",
-		"--path_format", "./%s.so",
+		"--path_format", "./../../%s.so",
 		"--point", "io:example:",
 		"--bridge", "io:5:10,io:",
 	)
