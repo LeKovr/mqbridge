@@ -17,15 +17,16 @@ func (srv *Service) LoadEndPoint(typ, connect string) (types.EndPoint, error) {
 		ep  types.EndPoint
 		err error
 	)
+	epa := types.EndPointAttr{Log: srv.log, WG: srv.wg, Abort: srv.abort, Quit: srv.quit}
 	switch typ {
 	case "example":
-		ep, err = example.New(srv.log, srv.wg, srv.abort, srv.quit, connect)
-	case "file":
-		ep, err = file.New(srv.log, srv.wg, srv.abort, srv.quit, connect)
+		ep, err = example.New(epa, connect)
+	case EndPointTypeFile:
+		ep, err = file.New(epa, connect)
 	case "nats":
-		ep, err = nats.New(srv.log, srv.wg, srv.abort, srv.quit, connect)
+		ep, err = nats.New(epa, connect)
 	case "pg":
-		ep, err = pg.New(srv.log, srv.wg, srv.abort, srv.quit, connect)
+		ep, err = pg.New(epa, connect)
 	default:
 		err = ErrPluginUnknown
 	}

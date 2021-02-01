@@ -16,5 +16,4 @@ func (srv Server) Publish(subj string, data []byte) error {
 }
 
 func (srv Server) Close() {
-	return
 }

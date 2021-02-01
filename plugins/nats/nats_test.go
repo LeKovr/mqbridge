@@ -8,14 +8,22 @@ import (
 	"github.com/wojas/genericr"
 
 	plugin "github.com/LeKovr/mqbridge/plugins/nats"
+	"github.com/LeKovr/mqbridge/types"
 )
 
 func TestAll(t *testing.T) {
-	log := genericr.NewForTesting(t)
-	var wg sync.WaitGroup
-	abort := make(chan string)
-	quit := make(chan struct{})
+	epa := newEPA()
 	srv := Server{}
-	_, err := plugin.NewConnected(log, &wg, abort, quit, &srv)
+	_, err := plugin.NewConnected(epa, &srv)
 	assert.NoError(t, err)
+}
+
+func newEPA() types.EndPointAttr {
+	var wg sync.WaitGroup
+	return types.EndPointAttr{
+		Log:   genericr.New(func(e genericr.Entry) {}),
+		WG:    &wg,
+		Abort: make(chan string),
+		Quit:  make(chan struct{}),
+	}
 }

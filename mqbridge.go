@@ -49,8 +49,20 @@ var (
 	ErrNoDelimBridge = errors.New("no delim")
 	ErrNoEndPoint    = errors.New("no endpoint")
 
-	ErrPluginBadNew  = errors.New("Plugin has no correct New signature")
-	ErrPluginUnknown = errors.New("Plugin is unknown")
+	ErrPluginBadNew  = errors.New("plugin has no correct New signature")
+	ErrPluginUnknown = errors.New("plugin is unknown")
+)
+
+const (
+	// EndPointTypeFile holds name for rndpoint type file
+	EndPointTypeFile = "file"
+
+	// DSNPartsMin holds minimal DSN parts count
+	DSNPartsMin = 2
+	// DSNPartsConnect holds DSN parts count when connect string given
+	DSNPartsConnect = 3
+	// BridgePartsCount holds count of bridge delimited parts
+	BridgePartsCount = 2
 )
 
 // New creates WebTail service
@@ -80,7 +92,7 @@ func New(log logr.Logger, cfg *Config) (*Service, error) {
 }
 
 // Run runs bridges
-func (srv *Service) Run(quit chan os.Signal) error {
+func (srv *Service) Run(quit chan os.Signal) (err error) {
 	defer func() {
 		close(srv.quit)
 		srv.wg.Wait() // Wait for side controls shutdown
@@ -89,21 +101,26 @@ func (srv *Service) Run(quit chan os.Signal) error {
 	for _, br := range srv.Bridges {
 		in, ok := srv.EndPoints[br.InTag]
 		if !ok {
-			return ErrNoEndPoint
+			err = ErrNoEndPoint
+			break
 		}
 		out, ok := srv.EndPoints[br.OutTag]
 		if !ok {
-			return ErrNoEndPoint
+			err = ErrNoEndPoint
+			break
 		}
 		srv.log.Info("Bridge", "in", in, "out", out)
-		err := in.Listen(br.InChannel, br.Pipe)
+		err = in.Listen(br.InChannel, br.Pipe)
 		if err != nil {
-			return err
+			break
 		}
 		err = out.Notify(br.OutChannel, br.Pipe)
 		if err != nil {
-			return err
+			break
 		}
+	}
+	if err != nil {
+		return err
 	}
 	srv.log.Info("Service Ready")
 	select {
@@ -123,11 +140,11 @@ func (srv *Service) NewEndPoint(dsn string) (string, types.EndPoint, error) {
 	var tag, typ, connect string
 	parts := strings.SplitN(dsn, ":", 3) // tag:mod://config
 	tag = parts[0]
-	if len(parts) < 2 {
-		typ = "file"
+	if len(parts) < DSNPartsMin {
+		typ = EndPointTypeFile
 	} else {
 		typ = parts[1]
-		if len(parts) == 3 {
+		if len(parts) == DSNPartsConnect {
 			connect = parts[2]
 		}
 	}
@@ -138,7 +155,7 @@ func (srv *Service) NewEndPoint(dsn string) (string, types.EndPoint, error) {
 // NewBridge creates bridge from definition string
 func NewBridge(delim, bridge string) (*Bridge, error) {
 	def := strings.Split(bridge, delim)
-	if len(def) != 2 {
+	if len(def) != BridgePartsCount {
 		return nil, ErrNoDelimBridge
 	}
 	br := Bridge{Pipe: make(chan string)}

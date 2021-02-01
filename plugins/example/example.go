@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/LeKovr/mqbridge/types"
@@ -14,21 +13,18 @@ import (
 
 // EndPoint holds endpoint
 type EndPoint struct {
-	log   logr.Logger
-	wg    *sync.WaitGroup
-	abort chan string
-	quit  chan struct{}
+	types.EndPointAttr
 }
 
-// New create endpoint
-func New(log logr.Logger, wg *sync.WaitGroup, abort chan string, quit chan struct{}, dsn string) (types.EndPoint, error) {
-	log.Info("Endpoint", "dsn", dsn)
-	return &EndPoint{log, wg, abort, quit}, nil
+// New creates endpoint
+func New(epa types.EndPointAttr, dsn string) (types.EndPoint, error) {
+	epa.Log.Info("Endpoint", "dsn", dsn)
+	return &EndPoint{epa}, nil
 }
 
 // Listen starts all listening goroutines
 func (ep EndPoint) Listen(channel string, pipe chan string) error {
-	log := ep.log.WithValues("is_in", true, "channel", channel)
+	log := ep.Log.WithValues("is_in", true, "channel", channel)
 	parts := strings.SplitN(channel, ":", 2)
 	count, err := strconv.Atoi(parts[0])
 	if err != nil {
@@ -45,15 +41,15 @@ func (ep EndPoint) Listen(channel string, pipe chan string) error {
 
 // Notify starts all notify goroutines
 func (ep EndPoint) Notify(channel string, pipe chan string) error {
-	log := ep.log.WithValues("is_in", false, "channel", channel)
+	log := ep.Log.WithValues("is_in", false, "channel", channel)
 	log.Info("Endpoint for STDOUT")
 	go ep.printer(log, pipe)
 	return nil
 }
 
 func (ep EndPoint) reader(log logr.Logger, count, delay int, pipe chan string) {
-	ep.wg.Add(1)
-	defer ep.wg.Done()
+	ep.WG.Add(1)
+	defer ep.WG.Done()
 	ticker := time.NewTicker(time.Duration(delay) * time.Millisecond)
 	defer ticker.Stop()
 	i := 0
@@ -65,9 +61,9 @@ func (ep EndPoint) reader(log logr.Logger, count, delay int, pipe chan string) {
 			pipe <- line
 			i++
 			if i >= count {
-				ep.abort <- "channel"
+				ep.Abort <- "channel"
 			}
-		case <-ep.quit:
+		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			return
 		}
@@ -75,13 +71,13 @@ func (ep EndPoint) reader(log logr.Logger, count, delay int, pipe chan string) {
 }
 
 func (ep EndPoint) printer(log logr.Logger, pipe chan string) {
-	ep.wg.Add(1)
-	defer ep.wg.Done()
+	ep.WG.Add(1)
+	defer ep.WG.Done()
 	for {
 		select {
 		case line := <-pipe:
 			fmt.Println(line)
-		case <-ep.quit:
+		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			return
 		}

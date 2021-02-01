@@ -33,6 +33,7 @@ func (srv *Service) LoadEndPoint(typ, connect string) (types.EndPoint, error) {
 	if !ok {
 		return nil, ErrPluginBadNew
 	}
-	ep, err := NewEP(srv.log, srv.wg, srv.abort, srv.quit, connect)
+	epa := types.EndPointAttr{srv.log, srv.wg, srv.abort, srv.quit}
+	ep, err := NewEP(epa, connect)
 	return ep, err
 }

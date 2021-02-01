@@ -8,30 +8,34 @@ import (
 	"github.com/wojas/genericr"
 
 	plugin "github.com/LeKovr/mqbridge/plugins/example"
+	"github.com/LeKovr/mqbridge/types"
 )
 
-func Example_plugin() {
-	log := genericr.New(func(e genericr.Entry) {})
+func newEPA() types.EndPointAttr {
 	var wg sync.WaitGroup
-	abort := make(chan string)
-	quit := make(chan struct{})
-	plug, _ := plugin.New(log, &wg, abort, quit, "test")
+	return types.EndPointAttr{
+		Log:   genericr.New(func(e genericr.Entry) {}),
+		WG:    &wg,
+		Abort: make(chan string),
+		Quit:  make(chan struct{}),
+	}
+}
+func Example_plugin() {
+	epa := newEPA()
+	plug, _ := plugin.New(epa, "test")
 	pipe := make(chan string)
 	plug.Listen("1:100", pipe)
 	plug.Notify("", pipe)
-	<-abort
-	close(quit)
-	wg.Wait()
+	<-epa.Abort
+	close(epa.Quit)
+	epa.WG.Wait()
 	// Output:
 	// sample 0
 }
 
 func TestListenErrors(t *testing.T) {
-	log := genericr.NewForTesting(t)
-	var wg sync.WaitGroup
-	abort := make(chan string)
-	quit := make(chan struct{})
-	plug, err := plugin.New(log, &wg, abort, quit, "test")
+	epa := newEPA()
+	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 
 	pipe := make(chan string)
