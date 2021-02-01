@@ -115,8 +115,8 @@ select * from mqbridge_data ;
 
 ## TODO
 
-* [ ] centrifugo support
-* [ ] add channel buffer length in bridge config args (--buffer []int)
+* [ ] (if usecase will be) add channel buffer length in bridge config args (--buffer []int)
+* [ ] (may be) centrifugo support
 * [ ] (may be) postgresql: reuse connect if in=out
 * [ ] (may be) use github.com/jaehue/anyq for mq bridge
 
