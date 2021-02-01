@@ -1,97 +1,109 @@
 package nats
 
 import (
+	"sync"
+
+	"github.com/go-logr/logr"
 	"github.com/nats-io/go-nats"
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
+// Server holds used nats signatures, see mock_nats_test.go
+type Server interface {
+	ChanSubscribe(subj string, ch chan *nats.Msg) (*nats.Subscription, error)
+	Publish(subj string, data []byte) error
+	Close()
+}
+
+// EndPoint holds endpoint
+type EndPoint struct {
+	log   logr.Logger
+	wg    *sync.WaitGroup
+	abort chan string
+	quit  chan struct{}
+	nc    Server //*nats.Conn
+}
+
+// New create endpoint
+func New(log logr.Logger, wg *sync.WaitGroup, abort chan string, quit chan struct{}, dsn string) (types.EndPoint, error) {
+	log.Info("Endpoint", "dsn", dsn)
+	nc, err := nats.Connect(dsn)
+	if err != nil {
+		return nil, err
+	}
+	return NewConnected(log, wg, abort, quit, nc)
+}
+
+// NewConnected creates endpoint for connected service
+func NewConnected(log logr.Logger, wg *sync.WaitGroup, abort chan string, quit chan struct{}, nc Server) (types.EndPoint, error) {
+	ep := &EndPoint{log, wg, abort, quit, nc}
+	go ep.disconnect()
+	return ep, nil
+}
+
 // Listen starts all listening goroutines
-func Listen(side *types.Side, connect string, bridges types.Bridges) error {
-
-	side.Log.Printf("Connect NATS producer: %s", connect)
-	nc, err := nats.Connect(connect)
+func (ep EndPoint) Listen(channel string, pipe chan string) error {
+	log := ep.log.WithValues("is_in", true, "channel", channel)
+	log.Info("Connect NATS producer")
+	ch := make(chan *nats.Msg, 64)
+	sub, err := ep.nc.ChanSubscribe(channel, ch)
 	if err != nil {
 		return err
 	}
-
-	for _, br := range bridges {
-		ch := make(chan *nats.Msg, 64)
-		sub, err := nc.ChanSubscribe(br.In, ch)
-		if err != nil {
-			return err
-		}
-		side.Log.Printf("Bridge %d: producer connect to channel (%s)", br.ID, br.In)
-		go reader(side, sub, ch, br)
-		side.WG.Add(1)
-	}
-	go disconnect(side, nc)
-	side.WGControl.Add(1)
+	log.Info("Endpoint connected")
+	go ep.reader(log, sub, ch, pipe)
 	return nil
 }
 
-// Notify starts all notify goroutines
-func Notify(side *types.Side, connect string, bridges types.Bridges) error {
-
-	side.Log.Printf("Connect NATS consumer: %s", connect)
-	nc, err := nats.Connect(connect)
-	if err != nil {
-		return err
-	}
-	for _, br := range bridges {
-		side.Log.Printf("Bridge %d consumer: connect to channel (%s)", br.ID, br.Out)
-		go writer(side, nc, br)
-		side.WG.Add(1)
-	}
-	go disconnect(side, nc)
-	side.WGControl.Add(1)
-	return nil
-}
-
-func reader(side *types.Side, sub *nats.Subscription, ch chan *nats.Msg, br *types.Bridge) {
-	defer side.WG.Done()
+func (ep EndPoint) reader(log logr.Logger, sub *nats.Subscription, ch chan *nats.Msg, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
 	defer sub.Unsubscribe()
 	for {
 		select {
-		case line := <-ch:
-			str := string(line.Data[:])
-			side.Log.Println("debug: BRIN ", br.ID, " ", str)
-			br.Pipe <- str
-		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
+		case ev := <-ch:
+			line := string(ev.Data)
+			log.V(1).Info("BRIN ", "line", line)
+			pipe <- line
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
 			return
 		}
 	}
 }
 
-func writer(side *types.Side, nc *nats.Conn, br *types.Bridge) {
-	defer side.WG.Done()
+// Notify starts all notify goroutines
+func (ep EndPoint) Notify(channel string, pipe chan string) error {
+	log := ep.log.WithValues("is_in", false, "channel", channel)
+	log.Info("Connect NATS producer")
+	go ep.writer(log, channel, pipe)
+	return nil
+}
+
+func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
 	for {
 		select {
-		case line := <-br.Pipe:
-			err := nc.Publish(br.Out, []byte(line))
+		case line := <-pipe:
+			err := ep.nc.Publish(channel, []byte(line))
 			if err != nil {
-				side.Log.Printf("warn: Bridge %d consumer error: %v", br.ID, err.Error())
-				//	side.Abort <- br.ID
-				//	return
+				log.Error(err, "Writer")
+				//				ep.abort <- "channel" // br.ID
+				//				return
 			}
-		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d consumer closed", br.ID)
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
 			return
 		}
 	}
 }
 
-func disconnect(side *types.Side, nc *nats.Conn) {
-	defer side.WGControl.Done()
-	defer nc.Close()
-
-	for {
-		select {
-		case <-side.Quit:
-			side.WG.Wait()
-			side.Log.Println("debug: NATS disconnect")
-			return
-		}
-	}
+func (ep EndPoint) disconnect() {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
+	defer ep.nc.Close()
+	<-ep.quit
+	ep.log.V(1).Info("NATS disconnect")
 }

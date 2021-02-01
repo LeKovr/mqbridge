@@ -2,3 +2,6 @@ dist
 vendor
 mqbridge
 mqbridge_*
+.plugins
+*.so
+coverage.out

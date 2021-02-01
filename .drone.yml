@@ -1,0 +1,50 @@
+kind: pipeline
+name: ci
+
+steps:
+- name: fetch tags
+  image: alpine/git
+  commands:
+  - git fetch --tags
+  - git describe --tags --always > .version
+
+- name: test app
+  image: golang:1.15.5-alpine3.12
+  commands:
+  - go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
+  - go vet ./...
+  - apk add --no-cache curl bash
+  - curl -sS https://codecov.io/bash | bash
+  environment:
+    CGO_ENABLED: 0
+    CODECOV_TOKEN:
+      from_secret: my-codecov-token
+
+- name: test docker build
+  image: plugins/docker
+  settings:
+    repo: testbuild
+    dry_run: true
+    build_args:
+      - GOLANG_VERSION=1.15.5-alpine3.12
+  when:
+    event:
+      exclude:
+      - tag
+
+- name: publish docker
+  image: plugins/docker
+  settings:
+    repo: ghcr.io/lekovr/${DRONE_REPO_NAME}
+    registry: https://ghcr.io
+    username: ${DRONE_REPO_OWNER}
+    password:
+      from_secret: my-docker-token
+    auto_tag: true
+    custom_labels: org.opencontainers.image.source=${DRONE_REPO_LINK}
+    label_schema: description="Translate messages from one message queue system to another one"
+    build_args:
+      - GOLANG_VERSION=1.15.5-alpine3.12
+  when:
+    event:
+    - tag

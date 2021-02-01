@@ -2,105 +2,119 @@ package file
 
 import (
 	"fmt"
-	"github.com/hpcloud/tail"
-	"gopkg.in/tomb.v1" // need tomb.ErrStillAlive
 	"os"
+	"sync"
+
+	"github.com/go-logr/logr"
+	"github.com/nxadm/tail"
+	"gopkg.in/tomb.v1" // need tomb.ErrStillAlive
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
-// Listen starts all listening goroutines
-func Listen(side *types.Side, connect string, bridges types.Bridges) error {
-	config := tail.Config{
-		Follow: true,
-		ReOpen: true,
-		Logger: side.Log,
-	}
+// EndPoint holds endpoint
+type EndPoint struct {
+	log   logr.Logger
+	wg    *sync.WaitGroup
+	abort chan string
+	quit  chan struct{}
+}
 
-	for _, br := range bridges {
-		t, err := tail.TailFile(br.In, config)
-		if err != nil {
-			return err
-		}
-		side.Log.Printf("Bridge %d: producer connect to file %s", br.ID, br.In)
-		go reader(side, t, br)
-		side.WG.Add(1)
+// New create endpoint
+func New(log logr.Logger, wg *sync.WaitGroup, abort chan string, quit chan struct{}, dsn string) (types.EndPoint, error) {
+	log.Info("Endpoint", "dsn", dsn)
+	return &EndPoint{log, wg, abort, quit}, nil
+}
+
+// Listen starts all listening goroutines
+func (ep EndPoint) Listen(channel string, pipe chan string) error {
+	log := ep.log.WithValues("is_in", true, "channel", channel)
+	config := tail.Config{
+		Follow:    true,
+		ReOpen:    true,
+		MustExist: true,
 	}
+	tf, err := tail.TailFile(channel, config)
+	if err != nil {
+		return err
+	}
+	log.Info("Endpoint connected")
+	go ep.reader(log, tf, pipe)
 	return nil
 }
 
 // Notify starts all notify goroutines
-func Notify(side *types.Side, connect string, bridges types.Bridges) error {
-
-	for _, br := range bridges {
-		if br.Out == "-" {
-			// send to STDOUT
-			side.Log.Printf("Bridge %d consumer: connect to stdout", br.ID)
-			go printer(side, *br)
-			side.WG.Add(1)
-		} else {
-			f, err := os.Create(br.Out)
-			if err != nil {
-				return err
-			}
-			side.Log.Printf("Bridge %d consumer: connect to file %s", br.ID, br.Out)
-			go writer(side, f, br)
-			side.WG.Add(1)
+func (ep EndPoint) Notify(channel string, pipe chan string) error {
+	log := ep.log.WithValues("is_in", false, "channel", channel)
+	if channel == "-" {
+		// send to STDOUT
+		log.Info("Endpoint for stdout")
+		go ep.printer(log, pipe)
+	} else {
+		f, err := os.Create(channel)
+		if err != nil {
+			return err
 		}
+		log.Info("Endpoint for file")
+		go ep.writer(log, f, pipe)
 	}
 	return nil
 }
 
-func reader(side *types.Side, tf *tail.Tail, br *types.Bridge) {
-	defer side.WG.Done()
+func (ep EndPoint) reader(log logr.Logger, tf *tail.Tail, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
 	for {
 		select {
 		case line := <-tf.Lines:
 			if tf.Err().Error() != tomb.ErrStillAlive.Error() {
-				side.Log.Printf("warn: Bridge %d side 'in' error: %v", br.ID, tf.Err().Error())
-				tf.Stop()
-				side.Abort <- br.ID
+				_ = tf.Stop()
+				log.Error(tf.Err(), "Reader")
+				ep.abort <- "channel" // TODO: channel
 				return
 			}
-			side.Log.Println("debug: BRIN ", br.ID, " ", line.Text)
-			br.Pipe <- line.Text
-		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
-			tf.Stop() //Cleanup()
+			log.V(1).Info("BRIN ", "line", line.Text)
+			pipe <- line.Text
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
+			tf.Stop() // Cleanup()
 			return
 		}
 	}
 }
 
-func writer(side *types.Side, f *os.File, br *types.Bridge) {
-	defer side.WG.Done()
+func (ep EndPoint) writer(log logr.Logger, f *os.File, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
+
 	for {
 		select {
-		case line := <-br.Pipe:
+		case line := <-pipe:
 			_, err := f.WriteString(line + "\n")
 			if err != nil {
-				side.Log.Printf("warn: Bridge %d consumer error: %v", br.ID, err.Error())
+				log.Error(err, "Writer")
 				f.Close()
-				side.Abort <- br.ID
+				ep.abort <- "channel" // br.ID
 				return
 			}
-		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d consumer closed", br.ID)
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
 			f.Close()
 			return
 		}
 	}
 }
 
-func printer(side *types.Side, br types.Bridge) {
-	defer side.WG.Done()
+func (ep EndPoint) printer(log logr.Logger, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
 	for {
 		select {
-		case line := <-br.Pipe:
+		case line := <-pipe:
 			fmt.Println(line)
 			// check err
-		case <-side.Quit:
-			side.Log.Printf("debug: Channel %d consumer closed", br.ID)
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
 			return
 		}
 	}

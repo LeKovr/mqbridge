@@ -1,30 +1,30 @@
+ARG GOLANG_VERSION
 
-# cloud.docker.com do not use ARG, we do now use hooks
-# ARG golang_version
-# FROM golang:$golang_version
+FROM golang:$GOLANG_VERSION as builder
 
-FROM golang:1.9.2-alpine3.6
+# git used for app version fetch
+RUN apk add --no-cache git build-base
+# gcc g++
 
-MAINTAINER Alexey Kovrizhkin <lekovr+docker@gmail.com>
+WORKDIR /opt/app
 
-# alpine does not have these apps
-RUN apk add --no-cache make bash git curl
+# Cached layer
+COPY ./go.mod ./go.sum ./
+RUN go mod download
 
-WORKDIR /go/src/github.com/LeKovr/mqbridge
-COPY *.go ./
-COPY plugins plugins
-COPY types types
-COPY Makefile .
-COPY glide.* ./
+# Sources dependent layer
+COPY ./ ./
+#RUN go generate ./cmd/webtail/...
+RUN for plug in example file nats pg ; do \
+    go build -buildmode=plugin -o ${plug}.so@ ./plugins/${plug} ; \
+  done
+RUN go test -tags test -covermode=atomic -coverprofile=coverage.out ./...
+RUN go build -ldflags "-X main.version=`git describe --tags --always`" -a ./cmd/mqbridge
 
-#RUN go get -u github.com/golang/lint/golint
-RUN make vendor
-RUN make build-standalone
-
-FROM scratch
+# GOOS=linux GOARCH=amd64 
+FROM alpine:3.12
 
 WORKDIR /
-COPY --from=0 /go/src/github.com/LeKovr/mqbridge/mqbridge .
-
-#EXPOSE 8080
+COPY --from=builder /opt/app/mqbridge .
+COPY --from=builder /opt/app/*.so .
 ENTRYPOINT ["/mqbridge"]

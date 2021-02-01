@@ -1,96 +1,129 @@
 package pg
 
 import (
+	"sync"
+
+	"github.com/go-logr/logr"
 	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/orm"
 
 	"github.com/LeKovr/mqbridge/types"
 )
 
-// Listen starts all listening goroutines
-func Listen(side *types.Side, connect string, bridges types.Bridges) error {
+// Result TODO
+type Result interface {
+}
 
-	side.Log.Printf("Connect PG producer: %s", connect)
-	opts, err := pg.ParseURL(connect)
+// Listener TODO
+type Listener interface {
+	Close() error
+	Channel() <-chan pg.Notification
+}
+
+// Server holds used pg signatures, see mock_pg_test.go
+type Server interface {
+	Exec(query interface{}, params ...interface{}) (orm.Result, error)
+	Listen(channels ...string) *pg.Listener
+	Close() error
+}
+
+/*
+_, err := conn.Exec(context.Background(), "listen channelname")
+if err != nil {
+    return nil
+}
+
+if notification, err := conn.WaitForNotification(context.Background()); err != nil {
+    // do something with notification
+}
+*/
+
+// EndPoint holds endpoint
+type EndPoint struct {
+	log   logr.Logger
+	wg    *sync.WaitGroup
+	abort chan string
+	quit  chan struct{}
+	db    Server // *pg.DB
+}
+
+// New create endpoint
+func New(log logr.Logger, wg *sync.WaitGroup, abort chan string, quit chan struct{}, dsn string) (types.EndPoint, error) {
+	log.Info("Endpoint", "dsn", dsn)
+	opts, err := pg.ParseURL(dsn)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	db := pg.Connect(opts)
+	return NewConnected(log, wg, abort, quit, db)
+}
 
-	for _, br := range bridges {
-		ln := db.Listen(br.In)
-		side.Log.Printf("Bridge %d: producer connect to channel (%s)", br.ID, br.In)
-		go reader(side, ln, br)
-		side.WG.Add(1)
-	}
-	go disconnect(side, db)
-	side.WGControl.Add(1)
+// NewConnected creates endpoint for connected service
+func NewConnected(log logr.Logger, wg *sync.WaitGroup, abort chan string, quit chan struct{}, db Server) (types.EndPoint, error) {
+	ep := &EndPoint{log, wg, abort, quit, db}
+	go ep.disconnect()
+	return ep, nil
+}
+
+// Listen starts listening goroutine
+func (ep EndPoint) Listen(channel string, pipe chan string) error {
+	log := ep.log.WithValues("is_in", true, "channel", channel)
+	log.Info("Connect PG producer")
+
+	listener := ep.db.Listen(channel)
+	log.Info("Endpoint connected")
+	go ep.reader(log, listener, pipe)
 	return nil
 }
 
-// Notify starts all notify goroutines
-func Notify(side *types.Side, connect string, bridges types.Bridges) error {
-
-	side.Log.Printf("Connect PG consumer: %s", connect)
-	opts, err := pg.ParseURL(connect)
-	if err != nil {
-		return err
-	}
-	db := pg.Connect(opts)
-	for _, br := range bridges {
-		side.Log.Printf("Bridge %d consumer: connect to func (%s)", br.ID, br.Out)
-		go writer(side, db, br)
-		side.WG.Add(1)
-	}
-	go disconnect(side, db)
-	side.WGControl.Add(1)
-	return nil
-}
-
-func reader(side *types.Side, ln *pg.Listener, br *types.Bridge) {
-	defer side.WG.Done()
+func (ep EndPoint) reader(log logr.Logger, ln *pg.Listener, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
 	defer ln.Close()
 	ch := ln.Channel()
 	for {
-		side.Log.Println("debug: BRIN ", br.ID, " START")
 		select {
 		case line := <-ch:
-			side.Log.Println("debug: BRIN ", br.ID, " ", line.Payload)
-			br.Pipe <- line.Payload
-		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d producer closed", br.ID)
+			log.V(1).Info("BRIN ", "line", line.Payload)
+			pipe <- line.Payload
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
 			return
 		}
 	}
 }
 
-func writer(side *types.Side, db *pg.DB, br *types.Bridge) {
-	defer side.WG.Done()
+// Notify starts all notify goroutines
+func (ep EndPoint) Notify(channel string, pipe chan string) error {
+	log := ep.log.WithValues("is_in", false, "channel", channel)
+	log.Info("Connect NATS producer")
+	go ep.writer(log, channel, pipe)
+	return nil
+}
+
+func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
 	for {
 		select {
-		case line := <-br.Pipe:
-			_, err := db.Exec("SELECT "+br.Out+"(?)", line)
+		case line := <-pipe:
+			_, err := ep.db.Exec("SELECT "+channel+"(?)", line)
 			if err != nil {
-				side.Log.Printf("warn: Bridge %d consumer error: %v", br.ID, err.Error())
-				//	side.Abort <- br.ID
-				//	return
+				log.Error(err, "Writer")
+				//				ep.abort <- "channel" // br.ID
+				//				return
 			}
-		case <-side.Quit:
-			side.Log.Printf("debug: Bridge %d consumer closed", br.ID)
+		case <-ep.quit:
+			log.V(1).Info("Endpoint close")
 			return
 		}
 	}
 }
 
-func disconnect(side *types.Side, db *pg.DB) {
-	defer side.WGControl.Done()
-	defer db.Close()
-
-	for {
-		select {
-		case <-side.Quit:
-			side.WG.Wait()
-			side.Log.Println("debug: DB disconnect")
-			return
-		}
-	}
+func (ep EndPoint) disconnect() {
+	ep.wg.Add(1)
+	defer ep.wg.Done()
+	defer ep.db.Close()
+	<-ep.quit
+	ep.log.V(1).Info("NATS disconnect")
 }
