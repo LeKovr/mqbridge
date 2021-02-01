@@ -217,6 +217,19 @@ dc: docker-compose.yml
 ## Other
 #:
 
+## Update docs at pkg.go.dev
+update-godoc:
+	vf=$(APP_VERSION) ; v=$${vf%%-*} ; echo "Update for $$v..." ; \
+	curl 'https://proxy.golang.org/github.com/!le!kovr/mqbridge/@v/'$$v'.info'
+
+## Update latest docker image tag at ghcr.io
+update-ghcr:
+	vf=$(APP_VERSION) ; vs=$${vf%%-*} ; v=$${vs#v} ; echo "Update for $$v..." ; \
+	docker pull ghcr.io/lekovr/mqbridge:$$v && \
+	docker tag ghcr.io/lekovr/mqbridge:$$v ghcr.io/lekovr/mqbridge:latest && \
+	docker push ghcr.io/lekovr/mqbridge:latest
+
+
 # This code handles group header and target comment with one or two lines only
 ## list Makefile targets
 ## (this is default target)
