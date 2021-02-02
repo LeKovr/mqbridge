@@ -1,7 +1,7 @@
 package nats_test
 
 import (
-	"github.com/nats-io/go-nats"
+	"github.com/nats-io/nats.go"
 )
 
 type Server struct {

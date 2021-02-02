@@ -2,8 +2,8 @@ package pg
 
 import (
 	"github.com/go-logr/logr"
-	"github.com/go-pg/pg"
-	"github.com/go-pg/pg/orm"
+	"github.com/go-pg/pg/v9"
+	"github.com/go-pg/pg/v9/orm"
 
 	"github.com/LeKovr/mqbridge/types"
 )
@@ -42,16 +42,47 @@ type EndPoint struct {
 	db Server // *pg.DB
 }
 
+// PgMaxRetries holds Pg connect retry count
+const PgMaxRetries = 5
+
 // New create endpoint
 func New(epa types.EndPointAttr, dsn string) (types.EndPoint, error) {
 	epa.Log.Info("Endpoint", "dsn", dsn)
+
 	opts, err := pg.ParseURL(dsn)
 	if err != nil {
 		return nil, err
 	}
+	opts.MaxRetries = PgMaxRetries
+
+	/*
+		done := make(chan struct{})
+		opts.OnConnect = func(c *pg.Conn) error {
+			done <- struct{}{}
+			return nil
+		}
+	*/
 	db := pg.Connect(opts)
+	_, err = db.Exec(`SELECT 1`)
+	//	<-done
+	if err != nil {
+		return nil, err
+	}
+	epa.Log.Info("Endpoint connected", "dsn", dsn)
 	return NewConnected(epa, db)
 }
+
+/*
+	config, err := pgx.ParseConfig(dsn)
+	if err != nil {
+		return nil, err
+	}
+	// config.Logger = log15adapter.NewLogger(log.New("module", "pgx"))
+		conn, err := pgx.ConnectConfig(context.Background(), config)
+	if err != nil {
+		return nil, err
+	}
+*/
 
 // NewConnected creates endpoint for connected service
 func NewConnected(epa types.EndPointAttr, db Server) (types.EndPoint, error) {
@@ -63,7 +94,7 @@ func NewConnected(epa types.EndPointAttr, db Server) (types.EndPoint, error) {
 // Listen starts listening goroutine
 func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
 	log := ep.Log.WithValues("is_in", true, "channel", channel, "id", id)
-	log.Info("Connect PG producer")
+	log.Info("Connect PG consumer")
 
 	listener := ep.db.Listen(channel)
 	log.Info("Endpoint connected")
@@ -74,7 +105,7 @@ func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
 // Notify starts all notify goroutines
 func (ep EndPoint) Notify(id int, channel string, pipe chan string) error {
 	log := ep.Log.WithValues("is_in", false, "channel", channel, "id", id)
-	log.Info("Connect NATS producer")
+	log.Info("Connect PG producer")
 	go ep.writer(log, channel, pipe)
 	return nil
 }
@@ -108,6 +139,7 @@ func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
 				//				ep.abort <- "channel" // br.ID
 				//				return
 			}
+			log.V(1).Info("BROUT", "line", line)
 		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			return

@@ -2,7 +2,7 @@ package nats
 
 import (
 	"github.com/go-logr/logr"
-	"github.com/nats-io/go-nats"
+	"github.com/nats-io/nats.go"
 
 	"github.com/LeKovr/mqbridge/types"
 )
@@ -19,6 +19,9 @@ type EndPoint struct {
 	types.EndPointAttr
 	nc Server // *nats.Conn
 }
+
+// BufferSize holds channel buffer size for subscription (some messages are lost if chan unbufferred)
+const BufferSize = 64
 
 // New creates endpoint
 func New(epa types.EndPointAttr, dsn string) (types.EndPoint, error) {
@@ -40,8 +43,8 @@ func NewConnected(epa types.EndPointAttr, nc Server) (types.EndPoint, error) {
 // Listen starts all listening goroutines
 func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
 	log := ep.Log.WithValues("is_in", true, "channel", channel, "id", id)
-	log.Info("Connect NATS producer")
-	ch := make(chan *nats.Msg)
+	log.Info("Connect NATS consumer")
+	ch := make(chan *nats.Msg, BufferSize)
 	sub, err := ep.nc.ChanSubscribe(channel, ch)
 	if err != nil {
 		return err
@@ -82,12 +85,12 @@ func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
 	for {
 		select {
 		case line := <-pipe:
-			err := ep.nc.Publish(channel, []byte(line))
-			if err != nil {
+			if err := ep.nc.Publish(channel, []byte(line)); err != nil {
 				log.Error(err, "Writer")
 				//				ep.abort <- "channel" // br.ID
 				//				return
 			}
+			log.V(1).Info("BROUT", "line", line)
 		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			return

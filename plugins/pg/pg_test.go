@@ -3,7 +3,7 @@ package pg_test
 import (
 	"testing"
 
-	"github.com/go-pg/pg"
+	"github.com/go-pg/pg/v9"
 	"github.com/stretchr/testify/assert"
 
 	plugin "github.com/LeKovr/mqbridge/plugins/pg"
