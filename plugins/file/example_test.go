@@ -1,6 +1,8 @@
 package file_test
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 	"time"
 
@@ -19,6 +21,14 @@ func TestAll(t *testing.T) {
 	assert.NoError(t, err)
 	err = plug.Notify(0, "-", pipe)
 	assert.NoError(t, err)
+
+	file, err := ioutil.TempFile(".", "mqbridge-test")
+	assert.NoError(t, err)
+	defer os.Remove(file.Name())
+	err = plug.Notify(1, file.Name(), pipe)
+	assert.NoError(t, err)
+	pipe <- "test row"
+
 	time.Sleep(100 * time.Millisecond)
 	close(epa.Quit)
 	epa.WG.Wait()

@@ -92,6 +92,7 @@ func (ep EndPoint) writer(log logr.Logger, f *os.File, pipe chan string) {
 				ep.Abort <- "channel" // br.ID
 				return
 			}
+			log.V(1).Info("BROUT", "line", line)
 		case <-ep.Quit:
 			log.V(1).Info("Endpoint close")
 			f.Close()
