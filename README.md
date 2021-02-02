@@ -1,6 +1,6 @@
 # mqbridge
 
-> Translate messages from one message queue system to another one
+> Stream messages from PG/NATS/File channel to another PG/NATS/File channel
 
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
@@ -38,9 +38,9 @@
 
   type | producer | consumer
 -------|----------|----------
- file  | tail(in_channel) | println out_channel, data
-  pg   | listen in_channel | select out_channel(data)
-  nats | Subscribe(in_channel) | Publish(out_channel, data)
+ file  | tail(file) | println file, data
+  pg   | listen 'event' | select func(data)
+  nats | Subscribe(channel) | Publish(channel, data)
 
 ## Installation
 
@@ -55,6 +55,7 @@ To activate **plugin** mode, run
 
 ```sh
 make plugin-on
+make run
 ```
 
 You will see `Loading plugin` in program output (using `make run`).
@@ -75,16 +76,14 @@ make clean plugin-off
 ### Connect strings
 
 * **file** - `${TAG):file://`
-* **pg** - `${TAG}:postgres://user:pass@host:port/db?sslmode=disable`
-* **nats** - `${TAG}:nats://user:pass@host:port`
+* **pg** - `${TAG}:pg:postgres://user:pass@host:port/db?sslmode=disable`
+* **nats** - `${TAG}:nats:nats://user:pass@host:port`
 
-Where `${TAG}` is the name of endpoint used in bridge definitions
+Where `${TAG}` is the name of endpoint given in config.
 
 ## Usage
 
 ### Producers
-
-See also: [Examples directory](examples/)
 
 mqbridge uses the following as data source:
 
@@ -96,7 +95,7 @@ mqbridge uses the following as data source:
 
 mqbridge sends received messages as
 
-* **file** - add lines to files named as `out_channel`
+* **file** - add lines to file named as `out_channel`
 * **pg** - calls sql `select out_channel(data)`
 * **nats** - publish message to `out_channel`
 
@@ -123,13 +122,13 @@ $_$;
   --point out:pg:postgres://op:op@localhost:5432/db1?sslmode=disable
 ```
 
-3. Run at pg producer (db0) SQL
+3. Run at pg producer db (db0)
 
 ```sql
 notify event, '{"test": 1972}';
 ```
 
-4. See results in db1
+4. See results in consumer db (db1)
 
 ```
 select * from mqbridge_data ;
@@ -138,12 +137,7 @@ select * from mqbridge_data ;
  {"test": 1972}
 ```
 
-## TODO
-
-* [ ] (if there will be usecase) add channel buffer length in bridge config args (--buffer []int)
-* [ ] (may be) centrifugo support
-* [ ] (may be) postgresql: reuse connect if in=out
-* [ ] (may be) use github.com/jaehue/anyq for mq bridge
+See also: [Examples directory](examples/)
 
 ## License
 
