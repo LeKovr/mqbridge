@@ -1,0 +1,52 @@
+version: '2.1'
+
+services:
+
+  mqbr-file:
+    image: ${IMAGE}:${IMAGE_VER}
+    command:
+      --debug
+      --point io:file
+      --bridge io:/data/${BR_IN},io:/data/${BR_OUT}
+    volumes:
+      - ./:/data
+
+  mqbr-nats:
+    image: ${IMAGE}:${IMAGE_VER}
+    command:
+      --debug
+      --point io:file
+      --point mq:nats:nats://nats:4222
+      --bridge io:/data/${BR_IN},mq:testchannel
+      --bridge mq:testchannel,io:/data/${BR_OUT}
+    volumes:
+      - ./:/data
+    depends_on:
+      - nats
+
+      # db:test_event must be the first so LISTEN starts before notifies raised
+  mqbr-pg:
+    image: ${IMAGE}:${IMAGE_VER}
+    command:
+      --debug
+      --point io:file
+      --point db:pg:postgres://${USER_NAME}:${USER_PASS}@pg:5432/mqbridge_example?sslmode=disable
+      --bridge db:test_event,io:/data/${BR_OUT}
+      --bridge io:/data/${BR_IN},db:test_channel
+    volumes:
+      - ./:/data
+    depends_on:
+      - pg
+
+  nats:
+    image: nats-streaming:0.20.0-alpine3.12
+
+  pg:
+    image: postgres:13.1-alpine
+    environment:
+      - POSTGRES_USER=${USER_NAME}
+      - POSTGRES_PASSWORD=${USER_PASS}
+      - POSTGRES_DB=mqbridge_example
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    stop_signal: SIGINT
