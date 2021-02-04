@@ -65,7 +65,7 @@ const (
 	BridgePartsCount = 2
 )
 
-// New creates WebTail service
+// New creates MQBridge service
 func New(log logr.Logger, cfg *Config) (*Service, error) {
 	var wg sync.WaitGroup
 	service := &Service{cfg: cfg, log: log, wg: &wg,
