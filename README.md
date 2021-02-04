@@ -108,9 +108,9 @@ This sample shows how to setup pg -> pg bridge.
 1. Setup pg consumer (db1) for `out_channel` = `bridge` (see function name)
 
 ```sql
-create table mqbridge_data (line jsonb);
+create table mqbridge_data (line text);
 
-create or replace function bridge(a jsonb) returns void language plpgsql as 
+create or replace function bridge(a text) returns void language plpgsql as
 $_$ 
   begin insert into mqbridge_data (line) values(a); end 
 $_$;
@@ -132,7 +132,7 @@ notify event, '{"test": 1972}';
 
 4. See results in consumer db (db1)
 
-```
+```sql
 select * from mqbridge_data ;
       line     
 ----------------
@@ -140,6 +140,59 @@ select * from mqbridge_data ;
 ```
 
 See also: [Examples directory](examples/)
+
+## Developer notes
+
+This project solves quite simple task, but it shows some more important things named tests.
+There are the following tests presented here:
+
+* [stupid testing for unmockable package](plugins/pg/pg_test.go#L31)
+* [tests with gomock](plugins/nats/nats_test.go)
+* [golang test which runs docker container](plugins/pg/docker_test.go)
+* [tests which use prepared environment](Makefile#L86)
+
+### Makefile
+
+Project contains `Makefile` with the following targets:
+
+```bash
+$ make
+
+mqbridge Makefile: Stream messages from PG/NATS/File channel to another PG/NATS/File channel
+
+Compile operations
+    lint            run `golint` and `golangci-lint`
+    vet             run `go vet`
+    test            run tests
+    test-docker     run tests that use services from docker-compose.yml
+    test-docker-self run tests that run docker themselves
+    cov-html        show package coverage in html (make cov-html PKG=counter)
+    build           build app
+    run             build and run in foreground
+
+Plugin support
+    plugin-on       enable plugin mode (this command changes source files)
+    plugin-off      disable plugin mode (this command changes source files back)
+
+Prepare distros
+    build-standalone build like docker image from scratch
+    buildall        build app for all platforms
+    dist            create disro files
+
+Docker operations
+    up              start service in container
+    down            stop service
+    docker-build    build docker image
+    docker-clean    remove docker image & temp files
+    dc              run $(CMD) via docker-compose
+
+Other
+    clean           clean generated files
+    update-godoc    update docs at pkg.go.dev
+    update-ghcr     update latest docker image tag at ghcr.io
+    help            list Makefile targets (this is default target)
+
+```
 
 ## License
 
