@@ -71,8 +71,8 @@ make clean plugin-off
 ## Config
 
 ```sh
-  --point=   Endpoints connect string in form 'tag[:plugin[://dsn]]' (default: io:file)
-  --bridge=  Bridge in form 'in_tag:in_channel:out_tag[:out_channel]' (default: io:src.txt,io:dst.txt)
+--point=   Endpoints connect string in form 'tag[:plugin[://dsn]]' (default: io:file)
+--bridge=  Bridge in form 'in_tag:in_channel:out_tag[:out_channel]' (default: io:src.txt,io:dst.txt)
 ```
 
 ### Connect strings
