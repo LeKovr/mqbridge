@@ -184,7 +184,7 @@ dist: clean buildall
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
-	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md mqbridge.png; \
+	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md draw.io.dia.png; \
         rm "$$P" ; \
 	  done
 
