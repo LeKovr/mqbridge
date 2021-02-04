@@ -68,11 +68,25 @@ To deactivate **plugin** mode, run
 make clean plugin-off
 ```
 
-## Config
+## Application config
 
 ```sh
---point=  Endpoints connect string in form 'tag[:plugin[://dsn]]' (default: io:file)
---bridge= Bridge in form 'in_tag:in_channel:out_tag[:out_channel]' (default: io:src.txt,io:dst.txt)
+$ ./mqbridge -h
+Usage:
+  mqbridge [OPTIONS]
+
+Application Options:
+  --version      Show version and exit
+  --debug        Show debug data
+
+MQ Bridge Options:
+  --delim=       Bridge definition delimiter (default: ,)
+  --path_format= Path format (default: ./%s.so)
+  --point=       Endpoints connect string in form 'tag[:plugin[://dsn]]' (default: io:file)
+  --bridge=      Bridge in form 'in_tag:in_channel:out_tag[:out_channel]' (default: io:src.txt,io:dst.txt)
+
+Help Options:
+  -h, --help         Show this help message
 ```
 
 ### Connect strings
