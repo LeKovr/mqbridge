@@ -18,8 +18,8 @@ type Config struct {
 	BridgeDelimiter  string `long:"delim"       default:","       description:"Bridge definition delimiter"`
 	PluginPathFormat string `long:"path_format" default:"./%s.so" description:"Plugin path format string"`
 
-	EndPoints []string `long:"point"  default:"io:file"            description:"Endpoints connect string in form 'tag[:plugin[://dsn]]'"`
-	Bridges   []string `long:"bridge" default:"io:src.txt,io:dst.txt" description:"Bridge definition in form 'in_tag:in_channel:out_tag[:out_channel]'"`
+	EndPoints []string `long:"point"  default:"io:file"               description:"Endpoints connect string in form 'tag[:plugin[://dsn]]'"`
+	Bridges   []string `long:"bridge" default:"io:src.txt,io:dst.txt" description:"Bridge def in form 'in_tag:in_channel:out_tag[:out_channel]'"`
 }
 
 // Bridge holds bridge attributes
