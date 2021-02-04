@@ -4,10 +4,12 @@ name: ci
 steps:
 
 - name: nats
+  detach: true
   image: nats-streaming:0.20.0-alpine3.12
 
 - name: pg
   image: postgres:13.1-alpine
+  detach: true
   environment:
     POSTGRES_USER: mqbridge
     POSTGRES_PASSWORD: secret
