@@ -32,7 +32,7 @@
 [gl1]: https://img.shields.io/github/license/LeKovr/mqbridge.svg
 [gl2]: https://github.com/LeKovr/mqbridge/blob/master/LICENSE
 
-![Data flow](mqbridge.png)
+![Data flow](draw.io.dia.png)
 
 Sending string from source to destination is a very primitive task. But it's solution might include some usefull technics. MQBridge uses this case for attempting to be example of doing things right.
 
@@ -192,6 +192,40 @@ Other
     update-ghcr     update latest docker image tag at ghcr.io
     help            list Makefile targets (this is default target)
 
+```
+## Project stats
+
+Here is the data from [cloc](https://github.com/AlDanial/cloc)
+
+### Real code (it does the real job)
+
+Language|files|blank|comment|code
+:-------|-------:|-------:|-------:|-------:
+Go |12|97|63|677
+
+Made by
+```
+cloc --not-match-f=test.go --md . | grep -E "Lang|:--|Go"
+```
+
+### All sources
+
+Language|files|blank|comment|code
+:-------|-------:|-------:|-------:|-------:
+Go|23|200|105|1167
+YAML|4|22|12|237
+make|2|84|99|205
+Markdown|2|68|0|200
+Dockerfile|1|7|4|13
+SQL|1|1|0|5
+XML|1|0|0|1
+--------|--------|--------|--------|--------
+SUM:|34|382|220|1828
+
+
+Made by
+```
+cloc --md .
 ```
 
 ## License
