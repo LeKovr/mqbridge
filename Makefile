@@ -1,5 +1,5 @@
 ## mqbridge Makefile:
-## Translate messages from one message queue system to another one
+## Stream messages from PG/NATS/File channel to another PG/NATS/File channel
 #:
 
 SHELL          = /bin/sh
@@ -8,18 +8,16 @@ SHELL          = /bin/sh
 # Build config
 
 GO          ?= go
-SOURCES      = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go'  -printf '%p\n')
-SRCU = $(wildcard *.go) $(wildcard */*.go) $(wildcard */*/*.go)
+SOURCES      = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go' -printf '%p\n')
 PLUGIN_DIRS  = $(shell go list -f '{{.Dir}}' ./plugins/...)
 PLUGIN_NAMES = $(notdir $(PLUGIN_DIRS))
-
 USE_PLUGINS  = $(shell test -f .plugins && echo yes)
 ifeq ($(USE_PLUGINS),yes)
   PLUGINS      = $(PLUGIN_NAMES:%=%.so)
   BUILD_ARG    = -tags plugin
-  TEST_ARG     = ,plugin
+  TEST_TAGS    = test,plugin
 else
-  PLUGINS      =
+  TEST_TAGS    = test
 endif
 
 BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
@@ -49,8 +47,9 @@ DC_VER        ?= latest
 # docker app for change inside containers
 DOCKER_BIN    ?= docker
 
-# docker app log files directory
-LOG_DIR       ?= ./log
+# Ports for docker tests
+TEST_NATS_PORT ?= 34222
+TEST_PG_PORT   ?= 35432
 
 # -----------------------------------------------------------------------------
 # App config
@@ -69,32 +68,45 @@ all: help
 ## Compile operations
 #:
 
-## Run lint
+## run `golint` and `golangci-lint`
 lint:
 	@golint ./...
 	@golangci-lint run ./...
 
-## Run vet
+## run `go vet`
 vet:
 	$(GO) vet ./...
 
-## Run tests
+## run tests
 test: coverage.out
 
 coverage.out: $(SOURCES) $(PLUGINS)
-	$(GO) test -tags test$(TEST_ARG) -covermode=atomic -coverprofile=$@ ./...
+	$(GO) test -tags $(TEST_TAGS)$(TEST_TAGS_MORE) -covermode=atomic -coverprofile=$@ ./...
 
-## Show package coverage in html (make cov-html PKG=counter)
+## run tests that use services from docker-compose.yml
+test-docker: CMD=up -d nats pg
+test-docker: dc .dockertest
+
+.dockertest: export TEST_DSN_PG=postgres://mqbridge:secret@localhost:$(TEST_PG_PORT)/mqbridge_test?sslmode=disable
+.dockertest: export TEST_DSN_NATS=nats://localhost:$(TEST_NATS_PORT)
+.dockertest: coverage.out
+	@$(MAKE) -s down
+
+## run tests that run docker themselves
+test-docker-self: TEST_TAGS_MORE=,docker
+test-docker-self: coverage.out
+
+## show package coverage in html (make cov-html PKG=counter)
 cov-html: coverage.out
 	$(GO) tool cover -html=coverage.out
 
-## Build app
+## build app
 build: $(PRG)
 
-## Build webtail command
+# build webtail command
 $(PRG): $(SOURCES) $(PLUGINS)
 	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -v -o $@ $(BUILD_ARG) -ldflags \
-	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$@
+	  "-X main.version=$(APP_VERSION)" ./cmd/$@
 
 ## build and run in foreground
 run: build
@@ -104,7 +116,8 @@ run: build
 ## Plugin support
 #:
 
-## Enable plugin mode
+## enable plugin mode
+## (this command changes source files)
 plugin-on:
 	@echo -n "Enable plugin mode.."
 ifneq ($(USE_PLUGINS),yes)
@@ -117,7 +130,8 @@ else
 	@echo "done already"
 endif
 
-## Disable plugin mode
+## disable plugin mode
+## (this command changes source files back)
 plugin-off:
 	@echo -n "Disable plugin mode.."
 ifeq ($(USE_PLUGINS),yes)
@@ -142,19 +156,14 @@ nats.so: plugins/nats/*.go
 pg.so: plugins/pg/*.go
 	GOOS=$(OS) GOARCH=$(ARCH) $(GO) build -buildmode=plugin -o $@ $<
 
-doc:
-	@echo "Open http://localhost:6060/pkg/LeKovr/webtail"
-	@godoc -http=:6060
-
 # ------------------------------------------------------------------------------
 ## Prepare distros
 #:
 
-
-## Build like docker image from scratch
+## build like docker image from scratch
 build-standalone: lint vet test
 	GOOS=linux CGO_ENABLED=0 $(GO) build -a -v -o $(PRG) -ldflags \
-	  "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG)
+	  "-X main.version=$(APP_VERSION)" ./cmd/$(PRG)
 
 
 ## build app for all platforms
@@ -164,7 +173,7 @@ buildall: lint vet
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
 	    GOOS=$${a%/*} GOARCH=$${a#*/} $(GO) build -o $$P -ldflags \
-	      "-X main.built=$(BUILD_DATE) -X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
+	      "-X main.version=$(APP_VERSION)" ./cmd/$(PRG) ; \
 	  done
 
 ## create disro files
@@ -175,42 +184,29 @@ dist: clean buildall
 	  for a in "$(ALLARCH)" ; do \
 	    echo "** $${a%/*} $${a#*/}" ; \
 	    P=$(PRG)-$${a%/*}_$${a#*/} ; \
-	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md README.ru.md screenshot.png; \
+	    zip "$(DIRDIST)/$$P.zip" "$$P" README.md mqbridge.png; \
         rm "$$P" ; \
 	  done
-
-
-## clean generated files
-clean:
-	@echo "*** $@ ***" ; \
-	  for a in "$(ALLARCH)" ; do \
-	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
-	    [ -f $$P ] && rm $$P || true ; \
-	  done
-	@[ -d $(DIRDIST) ] && rm -rf $(DIRDIST) || true
-	@[ -f $(PRG) ] && rm -f $(PRG) || true
-	@[ ! -f coverage.out ] || rm coverage.out
-	@for f in $(PLUGINS) ; do [ ! -f $$f ] || rm $$f ; done
 
 # ------------------------------------------------------------------------------
 ## Docker operations
 #:
 
-## Start service in container
+## start service in container
 up:
-up: CMD="up -d $(DC_SERVICE)"
+up: CMD=up -d $(DC_SERVICE)
 up: dc
 
-## Stop service
+## stop service
 down:
-down: CMD="rm -f -s $(DC_SERVICE)"
+down: CMD=rm -f -s
 down: dc
 
-## Build docker image
+## build docker image
 docker-build: CMD="build --force-rm $(DC_SERVICE)"
 docker-build: dc
 
-## Remove docker image & temp files
+## remove docker image & temp files
 docker-clean:
 	[ "$$($(DOCKER_BIN) images -q $(DC_IMAGE) 2> /dev/null)" = "" ] || $(DOCKER_BIN) rmi $(DC_IMAGE)
 
@@ -225,20 +221,34 @@ dc: docker-compose.yml
   -v $$PWD:$$PWD -w $$PWD \
   --env=DC_IMAGE=$(DC_IMAGE) \
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
+  --env=TEST_NATS_PORT=$(TEST_NATS_PORT) \
+  --env=TEST_PG_PORT=$(TEST_PG_PORT) \
   docker/compose:$(DC_VER) \
-  -p $(PRG) \
-  "$(CMD)"
+  -p $(PRG) $(CMD)
 
 # ------------------------------------------------------------------------------
 ## Other
 #:
 
-## Update docs at pkg.go.dev
+
+## clean generated files
+clean:
+	@echo "*** $@ ***" ; \
+	  for a in "$(ALLARCH)" ; do \
+	    P=$(PRG)_$${a%/*}_$${a#*/} ; \
+	    [ -f $$P ] && rm $$P || true ; \
+	  done
+	@[ -d $(DIRDIST) ] && rm -rf $(DIRDIST) || true
+	@[ -f $(PRG) ] && rm -f $(PRG) || true
+	@[ ! -f coverage.out ] || rm coverage.out
+	@for f in $(PLUGINS) ; do [ ! -f $$f ] || rm $$f ; done
+
+## update docs at pkg.go.dev
 update-godoc:
 	vf=$(APP_VERSION) ; v=$${vf%%-*} ; echo "Update for $$v..." ; \
 	curl 'https://proxy.golang.org/github.com/!le!kovr/mqbridge/@v/'$$v'.info'
 
-## Update latest docker image tag at ghcr.io
+## update latest docker image tag at ghcr.io
 update-ghcr:
 	vf=$(APP_VERSION) ; vs=$${vf%%-*} ; v=$${vs#v} ; echo "Update for $$v..." ; \
 	docker pull ghcr.io/lekovr/mqbridge:$$v && \

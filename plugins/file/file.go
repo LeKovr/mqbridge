@@ -65,7 +65,7 @@ func (ep EndPoint) reader(log logr.Logger, tf *tail.Tail, pipe chan string) {
 			if tf.Err().Error() != tomb.ErrStillAlive.Error() {
 				_ = tf.Stop()
 				log.Error(tf.Err(), "Reader")
-				ep.Abort <- "channel" // TODO: channel
+				ep.Abort <- tf.Err().Error()
 				return
 			}
 			log.V(1).Info("BRIN ", "line", line.Text)

@@ -34,6 +34,8 @@
 
 ![Data flow](mqbridge.png)
 
+Sending string from source to destination is a very primitive task. But it's solution might include some usefull technics. MQBridge uses this case for attempting to be example of doing things right.
+
 ## Message queue systems supported
 
   type | producer | consumer

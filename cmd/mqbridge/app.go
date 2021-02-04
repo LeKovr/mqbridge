@@ -22,7 +22,7 @@ func Run(exitFunc func(code int)) {
 	cfg, err := SetupConfig()
 	log := SetupLog(err != nil || cfg.Debug)
 	defer func() { Shutdown(exitFunc, err, log) }()
-	log.Info("mqbridge. Bridge for messages from one MQ to another.", "v", version)
+	log.Info("mqbridge. Stream messages from PG/NATS/File channel to another PG/NATS/File channel.", "v", version)
 	if err != nil || cfg.Version {
 		return
 	}

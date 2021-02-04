@@ -6,47 +6,73 @@ import (
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/stretchr/testify/assert"
 
 	plugin "github.com/LeKovr/mqbridge/plugins/file"
 	"github.com/LeKovr/mqbridge/types"
 )
 
+const (
+	TestRow0 = "test row one"
+	TestRow1 = "test row two"
+)
+
 func TestAll(t *testing.T) {
+	// Prepare bridge
 	epa := types.NewBlankEndPointAttr()
 	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 	pipe := make(chan string)
-	err = plug.Listen(0, "file.go", pipe)
+	// Prepare source with 1st data line
+	in, err := ioutil.TempFile(".", "mqbridge-test-in-")
 	assert.NoError(t, err)
-	err = plug.Notify(0, "-", pipe)
+	defer os.Remove(in.Name())
+	in.WriteString(TestRow0 + "\n")
+	// Start listening source
+	err = plug.Listen(0, in.Name(), pipe)
+	assert.NoError(t, err)
+	// Prepare destination
+	out, err := ioutil.TempFile(".", "mqbridge-test-out-")
+	assert.NoError(t, err)
+	defer os.Remove(out.Name())
+	// Start outgoing endpoint
+	err = plug.Notify(1, out.Name(), pipe)
 	assert.NoError(t, err)
 
-	file, err := ioutil.TempFile(".", "mqbridge-test")
-	assert.NoError(t, err)
-	defer os.Remove(file.Name())
-	err = plug.Notify(1, file.Name(), pipe)
-	assert.NoError(t, err)
-	pipe <- "test row"
+	// Write 2d data line
+	in.WriteString(TestRow1 + "\n")
 
+	// Give sime time to world (TODO: is there any way better?)
 	time.Sleep(100 * time.Millisecond)
+	// Fetch out and compare with in
+	bytes, err := ioutil.ReadFile(out.Name())
+	require.NoError(t, err)
+	require.Equal(t, TestRow0+"\n"+TestRow1+"\n", string(bytes))
+	// Close all
 	close(epa.Quit)
 	epa.WG.Wait()
 }
 
-/*
 func Example_plugin() {
-	plug, _ := plugin.New(log, &wg, abort, quit)
+	epa := types.NewBlankEndPointAttr()
+	plug, _ := plugin.New(epa, "test")
 	pipe := make(chan string)
-	plug.Listen("testdata/source.txt", pipe)
-	plug.Notify("-", pipe)
-	<-abort
-	close(quit)
-	wg.Wait()
+	file, _ := ioutil.TempFile(".", "mqbridge-test-in")
+	defer os.Remove(file.Name())
+	file.WriteString(TestRow0 + "\n")
+	plug.Listen(0, file.Name(), pipe)
+	plug.Notify(0, "-", pipe)
+	file.WriteString(TestRow1 + "\n")
+	time.Sleep(100 * time.Millisecond)
+	close(epa.Quit)
+	epa.WG.Wait()
 	// Output:
-	// sample 0
+	// test row one
+	// test row two
 }
-*/
+
 func TestErrors(t *testing.T) {
 	epa := types.NewBlankEndPointAttr()
 	plug, err := plugin.New(epa, "test")
