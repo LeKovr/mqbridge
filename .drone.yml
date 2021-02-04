@@ -9,9 +9,9 @@ steps:
 - name: pg
   image: postgres:13.1-alpine
   environment:
-    POSTGRES_USER=mqbridge
-    POSTGRES_PASSWORD=secret
-    POSTGRES_DB=mqbridge_test
+  - POSTGRES_USER=mqbridge
+  - POSTGRES_PASSWORD=secret
+  - POSTGRES_DB=mqbridge_test
 
 - name: fetch tags
   image: alpine/git
