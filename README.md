@@ -153,17 +153,17 @@ select * from mqbridge_data ;
  {"test": 1972}
 ```
 
-See also: [Examples directory](examples/)
+See also: [Examples](examples/)
 
 ## Developer notes
 
 This project solves quite simple task, but it shows some more important things named tests.
 There are the following tests presented here:
 
-* [stupid testing for unmockable package](plugins/pg/pg_test.go#L31)
-* [tests with gomock](plugins/nats/nats_test.go)
+* [tests which use prepared docker environment](Makefile#L86)
 * [golang test which runs docker container](plugins/pg/docker_test.go)
-* [tests which use prepared environment](Makefile#L86)
+* [tests with gomock](plugins/nats/nats_test.go)
+* [not so smart testing for unmockable package](plugins/pg/pg_test.go#L31)
 
 ### Makefile
 
@@ -207,6 +207,7 @@ Other
     help            list Makefile targets (this is default target)
 
 ```
+
 ## Project stats
 
 Here is the data from [cloc](https://github.com/AlDanial/cloc)
@@ -218,7 +219,8 @@ Language|files|blank|comment|code
 Go |12|97|63|677
 
 Made by
-```
+
+```bash
 cloc --not-match-f=test.go --md . | grep -E "Lang|:--|Go"
 ```
 
@@ -236,9 +238,9 @@ XML|1|0|0|1
 --------|--------|--------|--------|--------
 SUM:|34|382|220|1828
 
-
 Made by
-```
+
+```bash
 cloc --md .
 ```
 
