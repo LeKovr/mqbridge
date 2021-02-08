@@ -20,7 +20,6 @@ else
   TEST_TAGS    = test
 endif
 
-BUILD_DATE    ?= $(shell date -u +"%Y-%m-%dT%H:%M:%SZ")
 APP_VERSION   ?= $(shell git describe --tags --always)
 GOLANG_VERSION = 1.15.5-alpine3.12
 
@@ -28,6 +27,11 @@ OS            ?= linux
 ARCH          ?= amd64
 ALLARCH       ?= "linux/amd64 linux/386 darwin/amd64"
 DIRDIST       ?= dist
+
+# Path to golang package docs
+GODOC_REPO    ?= github.com/!le!kovr/$(PRG)
+# Path to docker image registry
+DOCKER_IMAGE  ?= ghcr.io/lekovr/$(PRG)
 
 # -----------------------------------------------------------------------------
 # Docker image config
@@ -38,9 +42,6 @@ PRG           ?= $(shell basename $$PWD)
 # Hardcoded in docker-compose.yml service name
 DC_SERVICE    ?= app
 
-# Generated docker image
-DC_IMAGE      ?= ghcr.io/lekovr/mqbridge
-
 # docker-compose image version
 DC_VER        ?= latest
 
@@ -50,12 +51,6 @@ DOCKER_BIN    ?= docker
 # Ports for docker tests
 TEST_NATS_PORT ?= 34222
 TEST_PG_PORT   ?= 35432
-
-# -----------------------------------------------------------------------------
-# App config
-
-# Docker container port
-SERVER_PORT   ?= 8080
 
 # -----------------------------------------------------------------------------
 
@@ -219,7 +214,7 @@ dc: docker-compose.yml
 	@$(DOCKER_BIN) run --rm  -i \
   -v /var/run/docker.sock:/var/run/docker.sock \
   -v $$PWD:$$PWD -w $$PWD \
-  --env=DC_IMAGE=$(DC_IMAGE) \
+  --env=DOCKER_IMAGE=$(DOCKER_IMAGE) \
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
   --env=TEST_NATS_PORT=$(TEST_NATS_PORT) \
   --env=TEST_PG_PORT=$(TEST_PG_PORT) \
@@ -244,17 +239,16 @@ clean:
 	@for f in $(PLUGINS) ; do [ ! -f $$f ] || rm $$f ; done
 
 ## update docs at pkg.go.dev
-update-godoc:
+godoc:
 	vf=$(APP_VERSION) ; v=$${vf%%-*} ; echo "Update for $$v..." ; \
-	curl 'https://proxy.golang.org/github.com/!le!kovr/mqbridge/@v/'$$v'.info'
+	curl 'https://proxy.golang.org/$(GODOC_REPO)/@v/'$$v'.info'
 
 ## update latest docker image tag at ghcr.io
-update-ghcr:
+ghcr:
 	vf=$(APP_VERSION) ; vs=$${vf%%-*} ; v=$${vs#v} ; echo "Update for $$v..." ; \
-	docker pull ghcr.io/lekovr/mqbridge:$$v && \
-	docker tag ghcr.io/lekovr/mqbridge:$$v ghcr.io/lekovr/mqbridge:latest && \
-	docker push ghcr.io/lekovr/mqbridge:latest
-
+	docker pull $(DOCKER_IMAGE):$$v && \
+	docker tag $(DOCKER_IMAGE):$$v $(DOCKER_IMAGE):latest && \
+	docker push $(DOCKER_IMAGE):latest
 
 # This code handles group header and target comment with one or two lines only
 ## list Makefile targets
