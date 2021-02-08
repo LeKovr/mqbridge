@@ -36,7 +36,8 @@ services:
     volumes:
       - ./:/data
     depends_on:
-      - pg
+      pg:
+        condition: service_healthy
 
   nats:
     image: nats-streaming:0.20.0-alpine3.12
@@ -50,3 +51,8 @@ services:
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     stop_signal: SIGINT
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-U", "postgres", "-h", "pg"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
