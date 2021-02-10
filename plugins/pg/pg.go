@@ -77,7 +77,7 @@ func (ep EndPoint) reader(log logr.Logger, ln *engine.Listener, pipe chan string
 		case line := <-ch:
 			log.V(1).Info("BRIN ", "line", line.Payload)
 			pipe <- line.Payload
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			return
 		}
@@ -98,7 +98,7 @@ func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
 				// return
 			}
 			log.V(1).Info("BROUT", "line", line)
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			return
 		}
@@ -108,7 +108,7 @@ func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
 func (ep EndPoint) disconnect() {
 	ep.WG.Add(1)
 	defer ep.WG.Done()
-	<-ep.Quit
+	<-ep.Ctx.Done()
 	if *ep.db != (engine.DB{}) {
 		ep.Log.V(1).Info("PG disconnect")
 		ep.db.Close()

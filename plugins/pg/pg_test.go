@@ -1,6 +1,7 @@
 package pg_test
 
 import (
+	"context"
 	"testing"
 
 	engine "github.com/go-pg/pg/v9"
@@ -22,17 +23,18 @@ $_$  BEGIN PERFORM pg_notify('%s', a); END $_$;`
 )
 
 func TestNewError(t *testing.T) {
-	epa := types.NewBlankEndPointAttr()
+	epa := types.NewBlankEndPointAttr(context.Background())
 	_, err := plugin.New(epa, notExistedDSN)
 	assert.Error(t, err)
 }
 func TestNewConnected(t *testing.T) {
-	epa := types.NewBlankEndPointAttr()
+	ctx, cancel := context.WithCancel(context.Background())
+	epa := types.NewBlankEndPointAttr(ctx)
 	db := engine.DB{}
 	plug, err := plugin.NewConnected(epa, &db)
 	assert.NoError(t, err)
 	assert.NotNil(t, plug)
-	close(epa.Quit)
+	cancel()
 	epa.WG.Wait()
 }
 
@@ -41,7 +43,8 @@ func runTest(t *testing.T, dsn string) {
 	pipeIn := make(chan string)
 	pipeOut := make(chan string)
 
-	epa := types.NewBlankEndPointAttr()
+	ctx, cancel := context.WithCancel(context.Background())
+	epa := types.NewBlankEndPointAttr(ctx)
 	plug, err := plugin.New(epa, dsn)
 	require.NoError(t, err)
 	require.NotNil(t, plug)
@@ -52,7 +55,7 @@ func runTest(t *testing.T, dsn string) {
 	got := <-pipeOut
 	require.Equal(t, testData, got)
 
-	close(epa.Quit)
+	cancel()
 	epa.WG.Wait()
 	require.NoError(t, err)
 }

@@ -3,6 +3,7 @@ package nats_test
 //go:generate mockgen -destination=generated_mock_test.go -package nats_test github.com/LeKovr/mqbridge/plugins/nats Server
 
 import (
+	"context"
 	"testing"
 	"time"
 
@@ -19,7 +20,8 @@ func TestAll(t *testing.T) {
 
 	mockEngine := NewMockServer(mockCtrl)
 
-	epa := types.NewBlankEndPointAttr()
+	ctx, cancel := context.WithCancel(context.Background())
+	epa := types.NewBlankEndPointAttr(ctx)
 	plug, err := plugin.NewConnected(epa, mockEngine)
 	assert.NoError(t, err)
 	assert.NotNil(t, plug)
@@ -31,6 +33,6 @@ func TestAll(t *testing.T) {
 	plug.Listen(0, "testchannel", pipe)
 	plug.Notify(0, "testchannel", pipe)
 	time.Sleep(100 * time.Millisecond)
-	close(epa.Quit)
+	cancel()
 	epa.WG.Wait()
 }

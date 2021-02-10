@@ -1,6 +1,7 @@
 package example_test
 
 import (
+	"context"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,20 +11,21 @@ import (
 )
 
 func Example_plugin() {
-	epa := types.NewBlankEndPointAttr()
+	ctx, cancel := context.WithCancel(context.Background())
+	epa := types.NewBlankEndPointAttr(ctx)
 	plug, _ := plugin.New(epa, "test")
 	pipe := make(chan string)
 	plug.Listen(0, "1:100", pipe)
 	plug.Notify(0, "", pipe)
 	<-epa.Abort
-	close(epa.Quit)
+	cancel()
 	epa.WG.Wait()
 	// Output:
 	// sample 0
 }
 
 func TestListenErrors(t *testing.T) {
-	epa := types.NewBlankEndPointAttr()
+	epa := types.NewBlankEndPointAttr(context.Background())
 	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 

@@ -1,6 +1,7 @@
 package types
 
 import (
+	"context"
 	"fmt"
 	"sync"
 
@@ -21,8 +22,8 @@ type EndPoint interface {
 type EndPointAttr struct {
 	Log   logr.Logger
 	WG    *sync.WaitGroup
+	Ctx   context.Context
 	Abort chan string
-	Quit  chan struct{}
 }
 
 // Printer prints pipe lines to STDOUT
@@ -33,7 +34,7 @@ func (ep EndPointAttr) Printer(log logr.Logger, pipe chan string) {
 		select {
 		case line := <-pipe:
 			fmt.Println(line)
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			return
 		}
@@ -41,12 +42,12 @@ func (ep EndPointAttr) Printer(log logr.Logger, pipe chan string) {
 }
 
 // NewBlankEndPointAttr creates new EndPointAttr for testing purposes
-func NewBlankEndPointAttr() EndPointAttr {
+func NewBlankEndPointAttr(ctx context.Context) EndPointAttr {
 	var wg sync.WaitGroup
 	return EndPointAttr{
 		Log:   genericr.New(func(e genericr.Entry) {}),
 		WG:    &wg,
 		Abort: make(chan string),
-		Quit:  make(chan struct{}),
+		Ctx:   ctx,
 	}
 }

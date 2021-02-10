@@ -70,7 +70,7 @@ func (ep EndPoint) reader(log logr.Logger, tf *tail.Tail, pipe chan string) {
 			}
 			log.V(1).Info("BRIN ", "line", line.Text)
 			pipe <- line.Text
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			_ = tf.Stop() // Cleanup()
 			return
@@ -93,7 +93,7 @@ func (ep EndPoint) writer(log logr.Logger, f *os.File, pipe chan string) {
 				return
 			}
 			log.V(1).Info("BROUT", "line", line)
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			f.Close()
 			return

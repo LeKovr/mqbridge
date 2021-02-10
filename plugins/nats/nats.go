@@ -72,7 +72,7 @@ func (ep EndPoint) reader(log logr.Logger, sub *engine.Subscription, ch chan *en
 			line := string(ev.Data)
 			log.V(1).Info("BRIN ", "line", line)
 			pipe <- line
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			return
 		}
@@ -91,7 +91,7 @@ func (ep EndPoint) writer(log logr.Logger, channel string, pipe chan string) {
 				// return
 			}
 			log.V(1).Info("BROUT", "line", line)
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			return
 		}
@@ -102,6 +102,6 @@ func (ep EndPoint) disconnect() {
 	ep.WG.Add(1)
 	defer ep.WG.Done()
 	defer ep.nc.Close()
-	<-ep.Quit
+	<-ep.Ctx.Done()
 	ep.Log.V(1).Info("NATS disconnect")
 }

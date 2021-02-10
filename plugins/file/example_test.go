@@ -1,6 +1,7 @@
 package file_test
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"testing"
@@ -21,7 +22,8 @@ const (
 
 func TestAll(t *testing.T) {
 	// Prepare bridge
-	epa := types.NewBlankEndPointAttr()
+	ctx, cancel := context.WithCancel(context.Background())
+	epa := types.NewBlankEndPointAttr(ctx)
 	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 	pipe := make(chan string)
@@ -51,12 +53,13 @@ func TestAll(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, TestRow0+"\n"+TestRow1+"\n", string(bytes))
 	// Close all
-	close(epa.Quit)
+	cancel()
 	epa.WG.Wait()
 }
 
 func Example_plugin() {
-	epa := types.NewBlankEndPointAttr()
+	ctx, cancel := context.WithCancel(context.Background())
+	epa := types.NewBlankEndPointAttr(ctx)
 	plug, _ := plugin.New(epa, "test")
 	pipe := make(chan string)
 	file, _ := ioutil.TempFile(".", "mqbridge-test-in")
@@ -66,7 +69,7 @@ func Example_plugin() {
 	plug.Notify(0, "-", pipe)
 	file.WriteString(TestRow1 + "\n")
 	time.Sleep(100 * time.Millisecond)
-	close(epa.Quit)
+	cancel()
 	epa.WG.Wait()
 	// Output:
 	// test row one
@@ -74,7 +77,7 @@ func Example_plugin() {
 }
 
 func TestErrors(t *testing.T) {
-	epa := types.NewBlankEndPointAttr()
+	epa := types.NewBlankEndPointAttr(context.Background())
 	plug, err := plugin.New(epa, "test")
 	assert.NoError(t, err)
 

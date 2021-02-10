@@ -63,7 +63,7 @@ func (ep EndPoint) reader(log logr.Logger, count, delay int, pipe chan string) {
 			if i >= count {
 				ep.Abort <- "channel"
 			}
-		case <-ep.Quit:
+		case <-ep.Ctx.Done():
 			log.V(1).Info("Endpoint close")
 			return
 		}

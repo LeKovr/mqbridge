@@ -1,6 +1,7 @@
 package mqbridge
 
 import (
+	"context"
 	"errors"
 	"os"
 	"strings"
@@ -36,8 +37,9 @@ type Service struct {
 	log       logr.Logger
 	cfg       *Config
 	wg        *sync.WaitGroup
-	abort     chan string   // aborted worker sends its name through it
-	quit      chan struct{} // closing this forces exit for all of workers
+	abort     chan string     // aborted worker sends its name through it
+	ctx       context.Context // used to stop all of workers
+	cancel    func()
 	EndPoints map[string]types.EndPoint
 	Bridges   []*Bridge
 }
@@ -68,18 +70,18 @@ const (
 // New creates MQBridge service
 func New(log logr.Logger, cfg *Config) (*Service, error) {
 	var wg sync.WaitGroup
-	service := &Service{cfg: cfg, log: log, wg: &wg,
+	srv := &Service{cfg: cfg, log: log, wg: &wg,
 		EndPoints: make(map[string]types.EndPoint, len(cfg.EndPoints)),
 		Bridges:   make([]*Bridge, len(cfg.Bridges)),
 		abort:     make(chan string),
-		quit:      make(chan struct{}),
 	}
+	srv.ctx, srv.cancel = context.WithCancel(context.Background())
 	for _, dsn := range cfg.EndPoints {
-		tag, ep, err := service.NewEndPoint(dsn)
+		tag, ep, err := srv.NewEndPoint(dsn)
 		if err != nil {
 			return nil, err
 		}
-		service.EndPoints[tag] = ep
+		srv.EndPoints[tag] = ep
 	}
 	var err error
 	for i, bridge := range cfg.Bridges {
@@ -88,23 +90,23 @@ func New(log logr.Logger, cfg *Config) (*Service, error) {
 		if err != nil {
 			break
 		}
-		if _, ok := service.EndPoints[br.InTag]; !ok {
+		if _, ok := srv.EndPoints[br.InTag]; !ok {
 			err = ErrNoEndPoint
 			break
 		}
-		if _, ok := service.EndPoints[br.OutTag]; !ok {
+		if _, ok := srv.EndPoints[br.OutTag]; !ok {
 			err = ErrNoEndPoint
 			break
 		}
-		service.Bridges[i] = br
+		srv.Bridges[i] = br
 	}
-	return service, err
+	return srv, err
 }
 
 // Run runs bridges
 func (srv *Service) Run(quit chan os.Signal) (err error) {
 	defer func() {
-		close(srv.quit)
+		srv.cancel()
 		srv.wg.Wait() // Wait for side controls shutdown
 		srv.log.Info("Service Exit")
 	}()

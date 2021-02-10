@@ -17,7 +17,7 @@ func (srv *Service) LoadEndPoint(typ, connect string) (types.EndPoint, error) {
 		ep  types.EndPoint
 		err error
 	)
-	epa := types.EndPointAttr{Log: srv.log, WG: srv.wg, Abort: srv.abort, Quit: srv.quit}
+	epa := types.EndPointAttr{Log: srv.log, WG: srv.wg, Abort: srv.abort, Ctx: srv.ctx}
 	switch typ {
 	case "example":
 		ep, err = example.New(epa, connect)
