@@ -60,7 +60,7 @@ var (
 )
 
 const (
-	// EndPointTypeFile holds name for rndpoint type file
+	// EndPointTypeFile holds name for endpoint type file
 	EndPointTypeFile = "file"
 
 	// DSNPartsMin holds minimal DSN parts count
