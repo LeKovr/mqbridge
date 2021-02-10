@@ -32,6 +32,8 @@ type Bridge struct {
 	Pipe       chan string
 }
 
+// codebeat:disable[TOO_MANY_IVARS]
+
 // Service holds MQBridge service
 type Service struct {
 	log       logr.Logger
@@ -43,6 +45,8 @@ type Service struct {
 	EndPoints map[string]types.EndPoint
 	Bridges   []*Bridge
 }
+
+// codebeat:enable[TOO_MANY_IVARS]
 
 // Errors
 var (
