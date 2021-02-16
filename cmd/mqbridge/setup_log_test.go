@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"errors"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -10,12 +9,6 @@ import (
 
 	cmd "github.com/LeKovr/mqbridge/cmd/mqbridge"
 )
-
-func TestSetupConfig(t *testing.T) {
-	cfg, err := cmd.SetupConfig("--debug")
-	assert.NoError(t, err)
-	assert.NotNil(t, cfg)
-}
 
 func TestSetupLog(t *testing.T) {
 	tests := []struct {
@@ -38,19 +31,4 @@ func TestSetupLog(t *testing.T) {
 		l.Error(nil, "error")
 		assert.Equal(t, tt.wantRows, logRows)
 	}
-}
-
-func TestShutdown(t *testing.T) {
-	err := errors.New("unknown")
-	logRows := []string{}
-	hook := func(e zapcore.Entry) error {
-		logRows = append(logRows, e.Message)
-		return nil
-	}
-	l := cmd.SetupLog(false, zap.Hooks(hook))
-	var c int
-
-	cmd.Shutdown(func(code int) { c = code }, err, l)
-	assert.Equal(t, 1, c)
-	assert.Equal(t, []string{"Run error"}, logRows)
 }
