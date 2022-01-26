@@ -5,7 +5,6 @@
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
  [![Build Status][bs1]][bs2]
- [![FOSSA Status][fs1]][fs2]
  [![GitHub license][gl1]][gl2]
 
 [![codecov][cc1]][cc2]
@@ -17,8 +16,6 @@
 [cct2]: https://codeclimate.com/github/LeKovr/mqbridge/test_coverage
 [ccm1]: https://api.codeclimate.com/v1/badges/0f7f2d4314b28b45e333/maintainability
 [ccm2]: https://codeclimate.com/github/LeKovr/mqbridge/maintainability
-[fs1]: https://app.fossa.com/api/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge.svg?type=shield
-[fs2]: https://app.fossa.com/projects/git%2Bgithub.com%2FLeKovr%2Fmqbridge?ref=badge_shield
 [ref1]: https://pkg.go.dev/badge/github.com/LeKovr/mqbridge.svg
 [ref2]: https://pkg.go.dev/github.com/LeKovr/mqbridge
 [cc1]: https://codecov.io/gh/LeKovr/mqbridge/branch/master/graph/badge.svg
