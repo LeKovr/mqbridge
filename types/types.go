@@ -6,7 +6,6 @@ import (
 	"sync"
 
 	"github.com/go-logr/logr"
-	"github.com/wojas/genericr"
 )
 
 // EndPoint declares plugin interface
@@ -42,12 +41,14 @@ func (ep EndPointAttr) Printer(log logr.Logger, pipe chan string) {
 }
 
 // NewBlankEndPointAttr creates new EndPointAttr for testing purposes
+//func NewBlankEndPointAttr(ctx context.Context) EndPointAttr {
 func NewBlankEndPointAttr(ctx context.Context) EndPointAttr {
 	var wg sync.WaitGroup
 	return EndPointAttr{
-		Log:   genericr.New(func(e genericr.Entry) {}),
+		Log:   logr.FromContextOrDiscard(ctx),
 		WG:    &wg,
 		Abort: make(chan string),
 		Ctx:   ctx,
 	}
+
 }

@@ -6,9 +6,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/go-logr/logr"
 	engine "github.com/go-pg/pg/v9"
 	"github.com/stretchr/testify/require"
-	"github.com/wojas/genericr"
 
 	"github.com/LeKovr/mqbridge"
 )
@@ -29,9 +29,7 @@ const (
 )
 
 func TestRunExample(t *testing.T) {
-	log := genericr.New(func(e genericr.Entry) {
-		t.Log(e.String())
-	})
+	log := logr.Discard()
 	cfg := mqbridge.Config{
 		BridgeDelimiter:  ",",
 		PluginPathFormat: "./%s.so",
@@ -52,9 +50,7 @@ func TestRunExample(t *testing.T) {
 }
 
 func TestRunPlugins(t *testing.T) {
-	log := genericr.New(func(e genericr.Entry) {
-		t.Log(e.String())
-	})
+	log := logr.Discard()
 	cfg := mqbridge.Config{
 		BridgeDelimiter:  ",",
 		PluginPathFormat: "./%s.so",
