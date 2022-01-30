@@ -22,7 +22,7 @@ steps:
   - git describe --tags --always > .version
 
 - name: test app
-  image: golang:1.15.5-alpine3.12
+  image: ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14
   commands:
   - export TEST_DSN_PG=postgres://mqbridge:secret@pg:5432/mqbridge_test?sslmode=disable
   - export TEST_DSN_NATS=nats://nats:4222
@@ -47,25 +47,8 @@ steps:
     repo: testbuild
     dry_run: true
     build_args:
-      - GOLANG_VERSION=1.15.5-alpine3.12
+      - GOLANG_VERSION=1.16.10-alpine3.14
   when:
     event:
       exclude:
       - tag
-
-- name: publish docker
-  image: plugins/docker
-  settings:
-    repo: ghcr.io/lekovr/${DRONE_REPO_NAME}
-    registry: https://ghcr.io
-    username: ${DRONE_REPO_OWNER}
-    password:
-      from_secret: my-docker-token
-    auto_tag: true
-    custom_labels: org.opencontainers.image.source=${DRONE_REPO_LINK}
-    label_schema: description="Translate messages from one message queue system to another one"
-    build_args:
-      - GOLANG_VERSION=1.15.5-alpine3.12
-  when:
-    event:
-    - tag
