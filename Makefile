@@ -21,7 +21,7 @@ else
 endif
 
 APP_VERSION   ?= $(shell git describe --tags --always)
-GOLANG_VERSION = 1.15.5-alpine3.12
+GOLANG_VERSION = 1.16.10-alpine3.14.2
 
 OS            ?= linux
 ARCH          ?= amd64
@@ -42,11 +42,12 @@ PRG           ?= $(shell basename $$PWD)
 # Hardcoded in docker-compose.yml service name
 DC_SERVICE    ?= app
 
-# docker-compose image version
-DC_VER        ?= latest
+# docker-compose image
+# for dcape use: DOCKER_COMPOSE=dcape-compose make test
+DOCKER_COMPOSE ?= docker/compose:latest
 
 # docker app for change inside containers
-DOCKER_BIN    ?= docker
+DOCKER_BIN     ?= docker
 
 # Ports for docker tests
 TEST_NATS_PORT ?= 34222
@@ -73,7 +74,7 @@ vet:
 	$(GO) vet ./...
 
 ## run tests
-test: coverage.out
+test: clean coverage.out
 
 coverage.out: $(SOURCES) $(PLUGINS)
 	$(GO) test -tags $(TEST_TAGS)$(TEST_TAGS_MORE) -covermode=atomic -coverprofile=$@ ./...
@@ -218,7 +219,7 @@ dc: docker-compose.yml
   --env=GOLANG_VERSION=$(GOLANG_VERSION) \
   --env=TEST_NATS_PORT=$(TEST_NATS_PORT) \
   --env=TEST_PG_PORT=$(TEST_PG_PORT) \
-  docker/compose:$(DC_VER) \
+  $(DOCKER_COMPOSE) \
   -p $(PRG) $(CMD)
 
 # ------------------------------------------------------------------------------
