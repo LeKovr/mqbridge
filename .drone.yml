@@ -22,7 +22,7 @@ steps:
   - git describe --tags --always > .version
 
 - name: test app
-  image: ghcr.io/dopos/golang-alpine:1.16.10-alpine3.14
+  image: ghcr.io/dopos/golang-alpine:v1.18.5-alpine3.16.2
   commands:
   - export TEST_DSN_PG=postgres://mqbridge:secret@pg:5432/mqbridge_test?sslmode=disable
   - export TEST_DSN_NATS=nats://nats:4222
@@ -47,7 +47,7 @@ steps:
     repo: testbuild
     dry_run: true
     build_args:
-      - GOLANG_VERSION=1.16.10-alpine3.14
+      - GOLANG_VERSION=1.18.5-alpine3.16.2
   when:
     event:
       exclude:
