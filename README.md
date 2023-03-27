@@ -4,7 +4,6 @@
 
 [![Go Reference][ref1]][ref2]
  [![GitHub Release][gr1]][gr2]
- [![Build Status][bs1]][bs2]
  [![GitHub license][gl1]][gl2]
 
 [![codecov][cc1]][cc2]
@@ -22,8 +21,6 @@
 [cc2]: https://codecov.io/gh/LeKovr/mqbridge
 [gc1]: https://goreportcard.com/badge/github.com/LeKovr/mqbridge
 [gc2]: https://goreportcard.com/report/github.com/LeKovr/mqbridge
-[bs1]: https://cloud.drone.io/api/badges/LeKovr/mqbridge/status.svg
-[bs2]: https://cloud.drone.io/LeKovr/mqbridge
 [gr1]: https://img.shields.io/github/release/LeKovr/mqbridge.svg
 [gr2]: https://github.com/LeKovr/mqbridge/releases
 [gl1]: https://img.shields.io/github/license/LeKovr/mqbridge.svg
