@@ -2,11 +2,14 @@ module github.com/LeKovr/mqbridge
 
 go 1.19
 
-// Dependabot alerts #20
+// Dependabot alert #20
 require mellium.im/sasl v0.3.1 // indirect
 
-// Dependabot alerts #16
+// Dependabot alert #16
 require golang.org/x/net v0.7.0 // indirect
+
+// Dependabot alerts #21, #22, #23
+require github.com/opencontainers/runc v1.1.5 // indirect
 
 require (
 	github.com/go-logr/logr v1.2.3
@@ -51,7 +54,6 @@ require (
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
-	github.com/opencontainers/runc v1.1.2 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/segmentio/encoding v0.1.15 // indirect
 	github.com/sirupsen/logrus v1.8.1 // indirect
