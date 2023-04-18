@@ -1,7 +1,6 @@
 module github.com/LeKovr/mqbridge
 
-// v1.19 fails on docker/docker
-go 1.18
+go 1.19
 
 // Dependabot alert #20
 require mellium.im/sasl v0.3.1 // indirect
@@ -11,15 +10,6 @@ require golang.org/x/net v0.7.0 // indirect
 
 // Dependabot alerts #21, #22, #23
 require github.com/opencontainers/runc v1.1.5 // indirect
-
-// Dependabot alerts #24, #25, #26
-//require github.com/moby/moby/v23 v23.0.3
-
-// Update from https://github.com/ory/dockertest/pull/431
-require github.com/docker/cli v23.0.3+incompatible // indirect
-
-// Dependabot alerts #24, #25, #26
-// replace github.com/docker/docker => github.com/moby/moby/v23 v23.0.3+incompatible
 
 require (
 	github.com/go-logr/logr v1.2.3
@@ -45,7 +35,8 @@ require (
 	github.com/codemodus/kace v0.5.1 // indirect
 	github.com/containerd/continuity v0.3.0 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
-	github.com/docker/docker v20.10.7+incompatible // indirect
+	github.com/docker/cli v23.0.3+incompatible // indirect
+	github.com/docker/docker v20.10.24+incompatible // indirect
 	github.com/docker/go-connections v0.4.0 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
