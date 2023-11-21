@@ -10,6 +10,9 @@ require golang.org/x/net v0.17.0 // indirect
 // Dependabot alerts #21, #22, #23
 require github.com/opencontainers/runc v1.1.5 // indirect
 
+// Dependabot alert #32
+require github.com/nats-io/nkeys v0.4.6 // indirect
+
 require github.com/docker/docker v24.0.7+incompatible // indirect
 
 require (
@@ -50,7 +53,6 @@ require (
 	github.com/mattn/go-isatty v0.0.16 // indirect
 	github.com/mitchellh/mapstructure v1.4.1 // indirect
 	github.com/moby/term v0.0.0-20201216013528-df9cb8a40635 // indirect
-	github.com/nats-io/nkeys v0.4.5 // indirect
 	github.com/nats-io/nuid v1.0.1 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2 // indirect
