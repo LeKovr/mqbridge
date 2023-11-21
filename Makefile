@@ -21,6 +21,9 @@ else
 endif
 
 APP_VERSION   ?= $(shell git describe --tags --always)
+# Last project tag (used in `make changelog`)
+RELEASE       ?= $(shell git describe --tags --abbrev=0 --always)
+
 GOLANG_VERSION ?= 1.21-alpine3.18
 
 OS            ?= linux
@@ -115,6 +118,13 @@ $(PRG): $(SOURCES) $(PLUGINS)
 ## build and run in foreground
 run: build
 	./$(PRG) --debug
+
+## Changes from last tag
+changelog:
+	@echo Changes since $(RELEASE)
+	@echo
+	@git log $(RELEASE)..@ --pretty=format:"* %s"
+
 
 # ------------------------------------------------------------------------------
 ## Plugin support
