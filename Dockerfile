@@ -1,7 +1,6 @@
-#ARG GOLANG_VERSION
+ARG GOLANG_VERSION
 
-# FROM golang:$GOLANG_VERSION as builder
-FROM ghcr.io/dopos/golang-alpine:v1.18.5-alpine3.16.2 as builder
+FROM golang:$GOLANG_VERSION as builder
 
 ARG TARGETARCH
 

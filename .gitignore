@@ -5,3 +5,4 @@ mqbridge
 .plugins
 *.so
 coverage.out
+var/data

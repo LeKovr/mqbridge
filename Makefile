@@ -2,13 +2,13 @@
 ## Stream messages from PG/NATS/File channel to another PG/NATS/File channel
 #:
 
-SHELL          = /bin/sh
+SHELL          = /bin/bash
 
 # -----------------------------------------------------------------------------
 # Build config
 
 GO          ?= go
-SOURCES      = $(shell find . -maxdepth 3 -mindepth 1 -name '*.go' -printf '%p\n')
+SOURCES      = $(shell find . -maxdepth 4 -mindepth 1 -path ./var -prune -o -name '*.go')
 PLUGIN_DIRS  = $(shell go list -f '{{.Dir}}' ./plugins/...)
 PLUGIN_NAMES = $(notdir $(PLUGIN_DIRS))
 USE_PLUGINS  = $(shell test -f .plugins && echo yes)
@@ -21,7 +21,7 @@ else
 endif
 
 APP_VERSION   ?= $(shell git describe --tags --always)
-GOLANG_VERSION = 1.16.10-alpine3.14.2
+GOLANG_VERSION ?= 1.21-alpine3.18
 
 OS            ?= linux
 ARCH          ?= amd64
@@ -42,17 +42,17 @@ PRG           ?= $(shell basename $$PWD)
 # Hardcoded in docker-compose.yml service name
 DC_SERVICE    ?= app
 
-# docker-compose image
-# for dcape use: DOCKER_COMPOSE=dcape-compose make test
-DOCKER_COMPOSE ?= docker/compose:latest
-
 # docker app for change inside containers
-DOCKER_BIN     ?= docker
+DOCKER_BIN     ?= docker compose
 
 # Ports for docker tests
 TEST_NATS_PORT ?= 34222
 TEST_PG_PORT   ?= 35432
 
+TEST_PG_PASS   ?= secret
+DB_CONTAINER   ?= $(PRG)-pg-1
+
+export
 # -----------------------------------------------------------------------------
 
 .PHONY: all doc gen build-standalone coverage cov-html build test lint fmt vet vendor up down docker-docker docker-clean
@@ -79,11 +79,19 @@ test: clean coverage.out
 coverage.out: $(SOURCES) $(PLUGINS)
 	$(GO) test -tags $(TEST_TAGS)$(TEST_TAGS_MORE) -covermode=atomic -coverprofile=$@ ./...
 
+.PHONY: .docker-wait
+
+# Wait for postgresql container start
+.docker-wait:
+	@echo -n "Checking PG is ready..." ; \
+	until [[ `docker inspect -f "{{.State.Health.Status}}" $${DB_CONTAINER:?Must be set}` == healthy ]] ; do sleep 1 ; echo -n "." ; done
+	@echo "Ok"
+
 ## run tests that use services from docker-compose.yml
 test-docker: CMD=up -d nats pg
-test-docker: dc .dockertest
+test-docker: dc .docker-wait .dockertest
 
-.dockertest: export TEST_DSN_PG=postgres://mqbridge:secret@localhost:$(TEST_PG_PORT)/mqbridge_test?sslmode=disable
+.dockertest: export TEST_DSN_PG=postgres://mqbridge:$(TEST_PG_PASS)@localhost:$(TEST_PG_PORT)/mqbridge_test?sslmode=disable
 .dockertest: export TEST_DSN_NATS=nats://localhost:$(TEST_NATS_PORT)
 .dockertest: coverage.out
 	@$(MAKE) -s down
@@ -199,7 +207,7 @@ down: CMD=rm -f -s
 down: dc
 
 ## build docker image
-docker-build: CMD="build --force-rm $(DC_SERVICE)"
+docker-build: CMD=build --force-rm $(DC_SERVICE)
 docker-build: dc
 
 ## remove docker image & temp files
@@ -212,20 +220,11 @@ docker-clean:
 # Thish works if path is the same for host, docker, docker-compose and child container
 ## run $(CMD) via docker-compose
 dc: docker-compose.yml
-	@$(DOCKER_BIN) run --rm  -i \
-  -v /var/run/docker.sock:/var/run/docker.sock \
-  -v $$PWD:$$PWD -w $$PWD \
-  --env=DOCKER_IMAGE=$(DOCKER_IMAGE) \
-  --env=GOLANG_VERSION=$(GOLANG_VERSION) \
-  --env=TEST_NATS_PORT=$(TEST_NATS_PORT) \
-  --env=TEST_PG_PORT=$(TEST_PG_PORT) \
-  $(DOCKER_COMPOSE) \
-  -p $(PRG) $(CMD)
+	@$(DOCKER_BIN) --project-directory $$PWD -p $(PRG) $(CMD)
 
 # ------------------------------------------------------------------------------
 ## Other
 #:
-
 
 ## clean generated files
 clean:

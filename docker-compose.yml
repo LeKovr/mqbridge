@@ -13,16 +13,23 @@ services:
         - GOLANG_VERSION
 
   nats:
-    image: nats-streaming:0.24.1
+    image: nats:2.10.5
     ports:
       - ${TEST_NATS_PORT}:4222
 
   pg:
-    image: postgres:13.1-alpine
+    image: postgres:15.2-alpine
     ports:
       - ${TEST_PG_PORT}:5432
     environment:
       - POSTGRES_USER=mqbridge
-      - POSTGRES_PASSWORD=secret
+      - POSTGRES_PASSWORD=${TEST_PG_PASS}
       - POSTGRES_DB=mqbridge_test
+    volumes:
+      - ./var/data:/var/lib/postgresql/data
     stop_signal: SIGINT
+    healthcheck:
+      test: ["CMD", "pg_isready", "-q", "-U", "postgres"]
+      interval: 2s
+      timeout: 3s
+      retries: 3
