@@ -7,8 +7,8 @@ require mellium.im/sasl v0.3.1 // indirect
 
 require golang.org/x/net v0.17.0 // indirect
 
-// Dependabot alerts #21, #22, #23
-require github.com/opencontainers/runc v1.1.5 // indirect
+// Dependabot alerts #21, #22, #23, #34
+require github.com/opencontainers/runc v1.1.12 // indirect
 
 // Dependabot alert #32
 require github.com/nats-io/nkeys v0.4.6 // indirect
