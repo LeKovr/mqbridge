@@ -24,7 +24,7 @@ APP_VERSION   ?= $(shell git describe --tags --always)
 # Last project tag (used in `make changelog`)
 RELEASE       ?= $(shell git describe --tags --abbrev=0 --always)
 
-GOLANG_VERSION ?= 1.21-alpine3.18
+GOLANG_VERSION ?= 1.22.3-alpine3.20
 
 OS            ?= linux
 ARCH          ?= amd64

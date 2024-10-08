@@ -1,8 +1,10 @@
-ARG GOLANG_VERSION
+ARG GOLANG_VERSION=1.22.3-alpine3.20
 
-FROM golang:$GOLANG_VERSION as builder
+FROM golang:$GOLANG_VERSION AS builder
 
 ARG TARGETARCH
+
+RUN apk add --no-cache git
 
 WORKDIR /opt/app
 
