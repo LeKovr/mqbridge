@@ -16,7 +16,7 @@ env:
   REGISTRY: ghcr.io
   # github.repository as <account>/<repo>
   IMAGE_NAME: ${{ github.repository }}
-  GOLANG_VERSION: golang:1.24.3-alpine3.22
+  GOLANG_VERSION: 1.24.3-alpine3.22
 
 jobs:
   build:
