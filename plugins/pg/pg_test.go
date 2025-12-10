@@ -4,7 +4,7 @@ import (
 	"context"
 	"testing"
 
-	engine "github.com/go-pg/pg/v9"
+	engine "github.com/go-pg/pg/v10"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 

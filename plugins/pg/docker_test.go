@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"testing"
 
-	engine "github.com/go-pg/pg/v9"
+	engine "github.com/go-pg/pg/v10"
 	"github.com/ory/dockertest/v3"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"

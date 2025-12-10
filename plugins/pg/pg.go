@@ -2,9 +2,10 @@ package pg
 
 import (
 	"fmt"
+	"context"
 
 	"github.com/go-logr/logr"
-	engine "github.com/go-pg/pg/v9"
+	engine "github.com/go-pg/pg/v10"
 
 	"github.com/LeKovr/mqbridge/types"
 )
@@ -53,7 +54,7 @@ func (ep EndPoint) Listen(id int, channel string, pipe chan string) error {
 	log := ep.Log.WithValues("is_in", true, "channel", channel, "id", id)
 	log.Info("Connect PG consumer")
 
-	listener := ep.db.Listen(channel)
+	listener := ep.db.Listen(context.Background(), channel)
 	log.Info("Endpoint connected")
 	go ep.reader(log, listener, pipe)
 	return nil
